@@ -1,0 +1,88 @@
+[
+  {
+    "id": "EXP-001",
+    "title": "Create EQUAL expense — DB shares sum exactly to amount",
+    "status": "PASS"
+  },
+  {
+    "id": "EXP-002",
+    "title": "EQUAL indivisible amount across 3 — rounding sums exactly",
+    "status": "PASS"
+  },
+  {
+    "id": "EXP-003",
+    "title": "Amount boundaries: 0.01 saves; 100M rejected",
+    "status": "PASS"
+  },
+  {
+    "id": "EXP-004",
+    "title": "Negative amount rejected",
+    "status": "PASS"
+  },
+  {
+    "id": "EXP-005",
+    "title": "ITEMIZED: per-person item flows to DB with colleague attached",
+    "status": "PASS"
+  },
+  {
+    "id": "EXP-007",
+    "title": "Receipt upload + signed serve URL",
+    "status": "PASS"
+  },
+  {
+    "id": "EXP-008",
+    "title": "Fake image (renamed text file) rejected by server",
+    "status": "PASS"
+  },
+  {
+    "id": "EXP-011",
+    "title": "Duplicate expense creates a copy",
+    "status": "PASS"
+  },
+  {
+    "id": "EXP-014",
+    "title": "Pagination: page 2 shows different rows",
+    "status": "PASS"
+  },
+  {
+    "id": "EXP-015",
+    "title": "Search: auto-fire, nonsense empty state, clear restores",
+    "status": "PASS"
+  },
+  {
+    "id": "EXP-017",
+    "title": "Search text survives a mutation",
+    "status": "PASS"
+  },
+  {
+    "id": "PAY-001",
+    "title": "Record Payment dialog opens and saves",
+    "status": "PASS"
+  },
+  {
+    "id": "COL-001",
+    "title": "Create colleague",
+    "status": "PASS"
+  },
+  {
+    "id": "RST-001/002",
+    "title": "Create restaurant; cuisine overflow",
+    "status": "BLOCKED",
+    "reason": "create-dialog automation flaky (silent validation); RST-005 FK restrict passes; overflow check needs API-level test"
+  },
+  {
+    "id": "RST-005",
+    "title": "Restaurant with expenses cannot be deleted (FK restrict)",
+    "status": "PASS"
+  },
+  {
+    "id": "DSH-001",
+    "title": "Dashboard total matches DB aggregate",
+    "status": "PASS"
+  },
+  {
+    "id": "SET-001",
+    "title": "Create access code; duplicate rejected",
+    "status": "PASS"
+  }
+]

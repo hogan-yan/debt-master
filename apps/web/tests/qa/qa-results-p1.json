@@ -1,0 +1,67 @@
+[
+  {
+    "id": "AUTH-022",
+    "title": "Setup wizard first-run + lockout after admin",
+    "status": "PASS"
+  },
+  {
+    "id": "AUTH-001",
+    "title": "Admin login valid credentials",
+    "status": "PASS"
+  },
+  {
+    "id": "AUTH-019",
+    "title": "Session cookie refresh on activity",
+    "status": "PASS"
+  },
+  {
+    "id": "AUTH-002/003",
+    "title": "Wrong password and unknown email: generic error",
+    "status": "PASS"
+  },
+  {
+    "id": "AUTH-004",
+    "title": "Empty login fields blocked client-side",
+    "status": "PASS"
+  },
+  {
+    "id": "AUTH-006",
+    "title": "Colleague access-code login (valid, unbound)",
+    "status": "PASS"
+  },
+  {
+    "id": "XC-001",
+    "title": "Route authorization: colleague vs admin routes",
+    "status": "PASS"
+  },
+  {
+    "id": "EXP-019",
+    "title": "Colleague sees no admin affordances; admin API rejects them",
+    "status": "PASS"
+  },
+  {
+    "id": "AUTH-018",
+    "title": "Logout clears session",
+    "status": "PASS"
+  },
+  {
+    "id": "AUTH-007/008/009",
+    "title": "Invalid, deactivated, deleted codes rejected",
+    "status": "PASS"
+  },
+  {
+    "id": "AUTH-010/011",
+    "title": "Rate limits: per-code block, per-IP enumeration block",
+    "status": "PASS"
+  },
+  {
+    "id": "AUTH-020",
+    "title": "Tampered auth cookie treated as signed out",
+    "status": "PASS"
+  },
+  {
+    "id": "XC-004",
+    "title": "Storage route: signature enforcement",
+    "status": "PASS"
+  }
+]

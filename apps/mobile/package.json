@@ -1,0 +1,1 @@
+{ "name": "@debtmaster/mobile", "private": true, "mobileremove_note": "stub so the monorepo Dockerfile workspace COPY resolves; the mobile app is not distributed here" }

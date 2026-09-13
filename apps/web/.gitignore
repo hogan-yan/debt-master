@@ -1,0 +1,5 @@
+# Anchored to apps/web so it does NOT match src/server/infrastructure/storage/.
+/storage/
+test-results/
+public/robots.txt
+public/sitemap.xml

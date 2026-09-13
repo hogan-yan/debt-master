@@ -1,0 +1,26 @@
+# Debt Master
+
+> Self-hosted web app that tracks shared lunch expenses in workplace teams. Admins record lunches and payments; colleagues check exactly what they owe by signing in with an access code. Free and open source under the MIT license.
+
+Pricing: $0, no paid tier. You run it on your own server; expense data never leaves it.
+
+- Landing page (English): /
+- Landing page (Japanese): /ja/
+- Landing page (Traditional Chinese): /zh-tw/
+- Log in: /login
+- Source code: https://github.com/Hogan-yeo/debt-master
+- License: MIT
+
+## FAQ
+
+### What is Debt Master?
+A free, self-hosted web app that tracks shared lunch expenses in a workplace team. Admins record lunches and payments; colleagues check what they owe by signing in with an access code.
+
+### Do my colleagues need accounts?
+No. Colleagues sign in with an access code issued by their admin. Only admins need email and password.
+
+### Where does our data live?
+On your own server. Debt Master is self-hosted, so expenses, names, and balances never leave the machine you run it on.
+
+### What does it cost?
+Nothing. Debt Master is open source under the MIT license, so you run it yourself for free.

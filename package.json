@@ -1,0 +1,15 @@
+{
+  "name": "debt-master",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "typecheck": "bun run --filter '@debtmaster/*' typecheck",
+    "test": "bun run --filter '@debtmaster/web' test"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  }
+}

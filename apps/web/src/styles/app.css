@@ -1,0 +1,284 @@
+@import 'tailwindcss' source('../');
+@config "../../tailwind.config.ts";
+
+@layer base {
+  :root {
+    /* Brand: monochrome (owner decision 2026-09-12, design-system.md §11).
+       The primary action is near-black in light mode; status colors are the
+       only hues. Near-black fill: 17.9:1 on white, white label 17.2:1 — AAA. */
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 42%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
+    --destructive: 0 76% 46%;
+    --destructive-foreground: 210 40% 98%;
+    /* Danger TEXT is a separate role from danger FILL: in dark mode the AA
+       pass bands diverge (fill needs ≤48% lightness for light text, text
+       needs ≥70% on the dark canvas). Light mode shares one value. */
+    --destructive-text: 0 76% 46%;
+    --success: 150 60% 32%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 33%;
+    --warning-foreground: 0 0% 100%;
+    --info: 200 80% 38%;
+    --info-foreground: 0 0% 100%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 0 0% 9%;
+    /* 10px cards / 8px controls — one step softer than the shadcn stock 0.5rem. */
+    --radius: 0.625rem;
+
+    /* Type — radical restraint. ONE quiet grotesk (Albert Sans).
+       Display/body/numeric are semantic aliases over the same face (see
+       tailwind.config.ts fontFamily). Tabular figures applied globally on
+       body so every currency column and stat figure stays jitter-free.
+       CJK locales override --font-sans below. See docs/design-system.md §3. */
+    --font-sans: 'Albert Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+    /* Shadow tokens */
+    --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    --shadow-dialog: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+    --shadow-dropdown: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  }
+
+  .dark {
+    /* ── Dark Mode Palette ───────────────────────────────
+     * Neutral dark canvas inspired by YouTube Dark.
+     * Zero blue tint — pure grayscale surfaces.
+     * Foreground is soft ivory, not pure white — easier on the eyes.
+     * Primary is monochrome ivory (owner decision 2026-09-12,
+     * design-system.md §11): 14:1 on the canvas, ink label 14:1 —
+     * the Vercel/Linear look. Status hues carry the only color.
+     * ──────────────────────────────────────────────────── */
+
+    --background: 0 0% 8%;
+    --foreground: 0 0% 88%;
+
+    --card: 0 0% 12%;
+    --card-foreground: 0 0% 88%;
+
+    --popover: 0 0% 15%;
+    --popover-foreground: 0 0% 88%;
+
+    --primary: 0 0% 88%;
+    --primary-foreground: 0 0% 8%;
+
+    --secondary: 0 0% 17%;
+    --secondary-foreground: 0 0% 88%;
+
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 59%;
+
+    --accent: 0 0% 17%;
+    --accent-foreground: 0 0% 88%;
+
+    --destructive: 0 62% 48%;
+    --destructive-foreground: 0 0% 96%;
+    --destructive-text: 0 85% 70%;
+    --success: 150 60% 55%;
+    --success-foreground: 0 0% 8%;
+    --warning: 38 92% 60%;
+    --warning-foreground: 0 0% 10%;
+    --info: 200 80% 65%;
+    --info-foreground: 0 0% 8%;
+    --border: 0 0% 19%;
+    --input: 0 0% 21%;
+    --ring: 0 0% 88%;
+
+    /* Shadow tokens */
+    --shadow-card:
+      0 0 0 1px hsl(var(--border) / 0.6),
+      0 1px 3px 0 hsl(0 0% 5% / 0.4),
+      0 4px 12px -2px hsl(0 0% 5% / 0.3);
+    --shadow-dialog:
+      0 0 0 1px hsl(var(--border) / 0.8),
+      0 8px 32px -4px hsl(0 0% 3% / 0.6),
+      0 0 80px -12px hsl(0 0% 3% / 0.4);
+    --shadow-dropdown:
+      0 0 0 1px hsl(var(--border) / 0.8),
+      0 8px 24px -4px hsl(0 0% 3% / 0.5);
+  }
+
+  /* Fallback for when JS fails: respect OS dark mode preference */
+  @media (prefers-color-scheme: dark) {
+    :root:not(.light) {
+      --background: 0 0% 8%;
+      --foreground: 0 0% 88%;
+      --card: 0 0% 12%;
+      --card-foreground: 0 0% 88%;
+      --popover: 0 0% 15%;
+      --popover-foreground: 0 0% 88%;
+      --primary: 0 0% 88%;
+      --primary-foreground: 0 0% 8%;
+      --secondary: 0 0% 17%;
+      --secondary-foreground: 0 0% 88%;
+      --muted: 0 0% 15%;
+      --muted-foreground: 0 0% 59%;
+      --accent: 0 0% 17%;
+      --accent-foreground: 0 0% 88%;
+      --destructive: 0 62% 48%;
+      --destructive-foreground: 0 0% 96%;
+      --destructive-text: 0 85% 70%;
+      --success: 150 60% 55%;
+      --success-foreground: 0 0% 8%;
+      --warning: 38 92% 60%;
+      --warning-foreground: 0 0% 10%;
+      --info: 200 80% 65%;
+      --info-foreground: 0 0% 8%;
+      --border: 0 0% 19%;
+      --input: 0 0% 21%;
+      --ring: 0 0% 88%;
+
+      /* Shadow tokens */
+      --shadow-card:
+        0 0 0 1px hsl(var(--border) / 0.6),
+        0 1px 3px 0 hsl(0 0% 5% / 0.4),
+        0 4px 12px -2px hsl(0 0% 5% / 0.3);
+      --shadow-dialog:
+        0 0 0 1px hsl(var(--border) / 0.8),
+        0 8px 32px -4px hsl(0 0% 3% / 0.6),
+        0 0 80px -12px hsl(0 0% 3% / 0.4);
+      --shadow-dropdown:
+        0 0 0 1px hsl(var(--border) / 0.8),
+        0 8px 24px -4px hsl(0 0% 3% / 0.5);
+    }
+  }
+
+  html,
+  body {
+    @apply antialiased;
+    font-family: theme('fontFamily.sans');
+    /* Global tabular figures: a money app's hero moments are numbers.
+       Tabular-nums everywhere keeps columns aligned and totals steady. */
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1, 'lnum' 1;
+  }
+
+  /* CJK font stacks — applied per locale via class on <html> */
+  html[data-locale='zh-tw'],
+  html[data-locale='zh-tw'] body {
+    --font-sans: 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+  }
+
+  html[data-locale='ja'],
+  html[data-locale='ja'] body {
+    --font-sans: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
+  }
+
+  html {
+    scrollbar-gutter: stable;
+  }
+}
+
+/* ── Global Transitions & Polish ────────────────────── */
+
+/* Smooth theme transitions on interactive elements only */
+button,
+a,
+input,
+textarea,
+select,
+[role="button"],
+.transition {
+  transition-property: background-color, border-color, color, fill, stroke, box-shadow;
+  transition-duration: 200ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+/* ── Dark Mode Refinements ──────────────────────────── */
+
+.dark {
+  /* Custom scrollbar — subtle, not distracting */
+  color-scheme: dark;
+
+  /* Selection highlight — soft blue, not jarring */
+  ::selection {
+    background-color: hsl(0 0% 52% / 0.3);
+  }
+
+  /* Text selection in inputs */
+  ::-moz-selection {
+    background-color: hsl(0 0% 52% / 0.3);
+  }
+
+  /* Scrollbar track */
+  &::-webkit-scrollbar-track {
+    background: hsl(0 0% 12%);
+  }
+
+  /* Scrollbar thumb */
+  &::-webkit-scrollbar-thumb {
+    background: hsl(0 0% 23%);
+    border-radius: 6px;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: hsl(0 0% 31%);
+  }
+
+  /* Card elevation — subtle top-edge glow instead of harsh shadow */
+  [data-slot="card"],
+  .card-elevated {
+    box-shadow: var(--shadow-card);
+  }
+
+  /* Dialog/Modal elevation — prominent but not harsh */
+  [data-radix-dialog-content],
+  .dialog-elevated {
+    box-shadow: var(--shadow-dialog);
+  }
+
+  /* Dropdown/popover elevation */
+  [data-radix-popper-content-wrapper] > div,
+  [data-radix-select-content] {
+    box-shadow: var(--shadow-dropdown);
+  }
+}
+
+/* ── Focus ring refinement ──────────────────────────── */
+/* Dark mode focus rings should glow, not border */
+.dark :focus-visible {
+  outline: 2px solid hsl(0 0% 72% / 0.7);
+  outline-offset: 2px;
+}
+
+/* ── Sonner Toast overrides ── */
+[data-sonner-toaster] {
+  z-index: 9999;
+}
+
+[data-sonner-toast] {
+  pointer-events: auto;
+}
+
+[data-sonner-toast] button {
+  position: relative;
+}
+
+/* Dark mode: use app card colors so toast is visible against page bg.
+   Sonner default is #000 which is only 8% darker than app's #141414. */
+.dark [data-sonner-toaster][data-sonner-theme='dark'] {
+  --normal-bg: hsl(var(--card));
+  --normal-border: hsl(var(--border));
+  --normal-text: hsl(var(--foreground));
+  --normal-bg-hover: hsl(var(--accent));
+}

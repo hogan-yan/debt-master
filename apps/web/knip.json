@@ -1,0 +1,22 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "src/client.tsx",
+    "src/router.tsx",
+    "src/ssr.tsx",
+    "src/routeTree.gen.ts",
+    "src/server/infrastructure/storage/minio-adapter.ts"
+  ],
+  "project": ["src/**/*", "!src/paraglide/**"],
+  "ignore": ["src/paraglide/**", "src/routeTree.gen.ts"],
+  "ignoreBinaries": ["bunx", "type-coverage", "biome", "psql"],
+  "ignoreDependencies": ["@sentry/bun"],
+  "rules": {
+    "exports": "off",
+    "types": "off",
+    "duplicates": "off"
+  },
+  "vitest": {
+    "config": ["vitest.config.ts", "vitest-locale.config.ts", "vitest.e2e.config.ts"]
+  }
+}

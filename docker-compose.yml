@@ -1,0 +1,51 @@
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: debtmaster
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: debtmaster
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U debtmaster -d debtmaster"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  app:
+    image: ghcr.io/hogan-yan/debt-master:latest
+    # CI publishes amd64 only — declare it so arm64 hosts (Apple Silicon)
+    # pull-and-emulate instead of failing with "no matching manifest".
+    platform: linux/amd64
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://debtmaster:${POSTGRES_PASSWORD}@db:5432/debtmaster
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET in .env}
+      # Required in production (the server refuses to boot without it).
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-http://localhost:3000}
+      RUN_MIGRATIONS_ON_START: "true"
+      SKIP_SEED: ${SKIP_SEED:-true}
+      # Single-container bundle: no Valkey service, so pin the in-memory cache
+      # (the production default would select valkey and retry-connect forever).
+      CACHE_PROVIDER: inmemory
+      # Object storage on the container filesystem — no MinIO needed. Mount a
+      # volume at /app/apps/web/storage to persist uploads across recreation.
+      STORAGE_PROVIDER: localfs
+      # Optional passthroughs — set them in .env to activate (empty = off).
+      SETUP_TOKEN: ${SETUP_TOKEN:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+    ports:
+      - "${PORT:-3000}:3000"
+
+volumes:
+  db-data:

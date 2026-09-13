@@ -1,0 +1,24 @@
+diff --git a/Libraries/Utilities/HMRClient.js b/Libraries/Utilities/HMRClient.js
+index 5911eaa6729ef688ab06d9f38b30b5292179dde5..6969b315bc829e514afb007fd3a6b25d42d0c123 100644
+--- a/Libraries/Utilities/HMRClient.js
++++ b/Libraries/Utilities/HMRClient.js
+@@ -101,10 +101,15 @@ const HMRClient: HMRClientNativeInterface = {
+   },
+ 
+   registerBundle(requestUrl: string) {
+-    invariant(
+-      hmrOrigin != null && hmrClient != null,
+-      'Expected HMRClient.setup() call at startup.',
+-    );
++    // Patched (debt-master): expo-dev-launcher 57 loads the app bundle through
++    // RN's fetchThenEvalAsync without the native side ever calling
++    // HMRClient.setup() (packager socket wiring is commented out upstream in
++    // EXDevLauncherController.m). The invariant aborts the load promise and
++    // white-screens the app. Skip HMR registration instead — Fast Refresh stays
++    // off, but the app boots. Remove once expo-dev-client handles RN 0.86.2.
++    if (hmrOrigin == null || hmrClient == null) {
++      return;
++    }
+     // only process registerBundle calls from the same origin
+     if (!requestUrl.startsWith(hmrOrigin)) {
+       return;

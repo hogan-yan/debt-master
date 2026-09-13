@@ -1,0 +1,37 @@
+[
+  {
+    "id": "XC-005",
+    "title": "Stored XSS payload renders as text, never executes",
+    "status": "PASS"
+  },
+  {
+    "id": "XC-007",
+    "title": "Injection payloads treated as literal text",
+    "status": "PASS"
+  },
+  {
+    "id": "XC-008",
+    "title": "Locale switch renders translated UI (no raw keys)",
+    "status": "PASS"
+  },
+  {
+    "id": "XC-019",
+    "title": "Money reconciliation invariants",
+    "status": "PASS"
+  },
+  {
+    "id": "AUTH-029",
+    "title": "Enable 2FA, verify TOTP, login challenge works",
+    "status": "PASS"
+  },
+  {
+    "id": "AUTH-030",
+    "title": "Disable 2FA with password",
+    "status": "PASS"
+  },
+  {
+    "id": "AUTH-025",
+    "title": "Forgot password returns generic success for any email",
+    "status": "PASS"
+  }
+]

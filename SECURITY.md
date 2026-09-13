@@ -4,13 +4,11 @@
 
 Please report vulnerabilities privately. Do not open a public issue for anything you believe is exploitable.
 
-Email **SECURITY_EMAIL** with:
+Email **hoganyan+debtmaster@gmail.com** with:
 
 - A short description of the issue
 - Steps to reproduce, or a proof of concept
 - The commit or image version you tested against
-
-> **Owner note:** replace `SECURITY_EMAIL` with the real contact address before this repository is published.
 
 You will get an acknowledgement, and we will work with you on a fix and a disclosure timeline.
 

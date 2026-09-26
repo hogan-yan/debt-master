@@ -414,11 +414,9 @@ describe('ExpenseList pagination', () => {
       />
     );
 
-    // Find and click the next page button (ChevronRight icon button)
-    const allButtons = screen.getAllByRole('button');
-    // The ChevronRight button is the one just before the last (ChevronsRight)
-    const chevronRightBtn = allButtons[allButtons.length - 2];
-    if (!chevronRightBtn) throw new Error('Next page button not found');
+    // Find and click the next page button by its accessible name (icon-only
+    // buttons carry aria-label + sr-only text)
+    const chevronRightBtn = screen.getByRole('button', { name: 'Next' });
     await user.click(chevronRightBtn);
 
     expect(onPaginationChange).toHaveBeenCalledWith(3, 10);
@@ -437,11 +435,7 @@ describe('ExpenseList pagination', () => {
       />
     );
 
-    // Find the previous page button (ChevronLeft icon button)
-    const allButtons = screen.getAllByRole('button');
-    // ChevronLeft is the second button (after ChevronsLeft)
-    const chevronLeftBtn = allButtons[1];
-    if (!chevronLeftBtn) throw new Error('Previous page button not found');
+    const chevronLeftBtn = screen.getByRole('button', { name: 'Previous' });
     await user.click(chevronLeftBtn);
 
     expect(onPaginationChange).toHaveBeenCalledWith(1, 10);
@@ -459,8 +453,7 @@ describe('ExpenseList pagination', () => {
       />
     );
 
-    const allButtons = screen.getAllByRole('button');
-    const chevronLeftBtn = allButtons[1];
+    const chevronLeftBtn = screen.getByRole('button', { name: 'Previous' });
     expect(chevronLeftBtn).toBeDisabled();
   });
 
@@ -476,8 +469,7 @@ describe('ExpenseList pagination', () => {
       />
     );
 
-    const allButtons = screen.getAllByRole('button');
-    const chevronRightBtn = allButtons[allButtons.length - 2];
+    const chevronRightBtn = screen.getByRole('button', { name: 'Next' });
     expect(chevronRightBtn).toBeDisabled();
   });
 

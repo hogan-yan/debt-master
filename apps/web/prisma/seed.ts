@@ -93,13 +93,17 @@ async function seedAccessCode(): Promise<void> {
   }
 
   // Seed regular colleague access code
+  // Dev/QA default. Any deploy that can run SEED_ON_START=true must set
+  // SEED_COLLEAGUE_ACCESS_CODE to a private value — the committed default is
+  // public knowledge (it lives in git history and the public dist repo).
+  const colleagueAccessCode = process.env.SEED_COLLEAGUE_ACCESS_CODE || 'JUDebt123!~';
   const existingColleague = await prisma.accessCode.findFirst({
-    where: { code: 'JUDebt123!~' },
+    where: { code: colleagueAccessCode },
   });
 
   if (!existingColleague) {
     await prisma.accessCode.create({
-      data: { code: 'JUDebt123!~', isActive: true },
+      data: { code: colleagueAccessCode, isActive: true },
     });
   }
 }

@@ -1,4 +1,8 @@
+import { createHash } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const sha256Hex = (value: string): string =>
+  createHash('sha256').update(value, 'utf8').digest('hex');
 
 vi.mock('@tanstack/react-start', () => {
   const createBuilder = () => {
@@ -20,6 +24,7 @@ const {
   mockLogAuditEvent,
   mockRequireAdminFromCookie,
   mockGetRequestHeader,
+  mockCheckSharedRateLimit,
 } = vi.hoisted(() => ({
   mockGetSession: vi.fn(),
   mockChangePassword: vi.fn(),
@@ -28,6 +33,7 @@ const {
   mockLogAuditEvent: vi.fn(),
   mockRequireAdminFromCookie: vi.fn(),
   mockGetRequestHeader: vi.fn(),
+  mockCheckSharedRateLimit: vi.fn(),
 }));
 
 vi.mock('@tanstack/start-server-core', () => ({
@@ -54,6 +60,20 @@ vi.mock('@/server/infrastructure/auth/auth-cookie', () => ({
   requireAdminFromCookie: () => mockRequireAdminFromCookie(),
 }));
 
+vi.mock('@/server/infrastructure/auth/auth-rate-limit', () => ({
+  getClientIdentifier: () => 'test-ip',
+}));
+
+vi.mock('@/server/infrastructure/auth/auth-server-utils', () => ({
+  RATE_LIMIT: {
+    TWO_FACTOR: { maxAttempts: 10, windowMs: 300_000, blockDurationMs: 900_000 },
+  },
+}));
+
+vi.mock('@/server/infrastructure/auth/rate-limit-store', () => ({
+  checkSharedRateLimit: (...args: unknown[]) => mockCheckSharedRateLimit(...args),
+}));
+
 const { changeAdminPassword, getAdminSessions, revokeAdminSession } = await import(
   '@/server/admin-security'
 );
@@ -74,6 +94,7 @@ beforeEach(() => {
   mockListSessions.mockResolvedValue([]);
   mockRevokeSession.mockResolvedValue(undefined);
   mockLogAuditEvent.mockResolvedValue(undefined);
+  mockCheckSharedRateLimit.mockResolvedValue({ allowed: true, remainingAttempts: 10 });
 });
 
 describe('changeAdminPassword', () => {
@@ -173,11 +194,11 @@ describe('getAdminSessions', () => {
 
     expect(result.sessions).toHaveLength(2);
     expect(result.sessions[0]).toMatchObject({
-      token: 'current-token',
+      tokenHash: sha256Hex('current-token'),
       isCurrent: true,
     });
     expect(result.sessions[1]).toMatchObject({
-      token: 'other-token',
+      tokenHash: sha256Hex('other-token'),
       isCurrent: false,
     });
   });
@@ -190,13 +211,34 @@ describe('getAdminSessions', () => {
     expect(result.sessions).toEqual([]);
   });
 
+  it('never exposes raw session tokens to the client', async () => {
+    const now = new Date();
+    const later = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    mockListSessions.mockResolvedValue([
+      {
+        token: 'current-token',
+        id: 'session-1',
+        userAgent: 'Mozilla/5.0',
+        ipAddress: '127.0.0.1',
+        createdAt: now,
+        expiresAt: later,
+      },
+    ]);
+
+    const result = await getAdminSessions();
+
+    const serialized = JSON.stringify(result);
+    expect(serialized).not.toContain('current-token');
+    expect(result.sessions[0]).toMatchObject({ tokenHash: sha256Hex('current-token') });
+  });
+
   it('filters out malformed session entries', async () => {
     mockListSessions.mockResolvedValue([{ token: 123 }, null, { token: 'valid-token' }]);
 
     const result = await getAdminSessions();
 
     expect(result.sessions).toHaveLength(1);
-    expect(result.sessions[0]?.token).toBe('valid-token');
+    expect(result.sessions[0]?.tokenHash).toBe(sha256Hex('valid-token'));
   });
 
   it('falls back to no current token when getSession returns null', async () => {
@@ -215,7 +257,10 @@ describe('getAdminSessions', () => {
     const result = await getAdminSessions();
 
     expect(result.sessions).toHaveLength(1);
-    expect(result.sessions[0]).toMatchObject({ token: 'only-token', isCurrent: false });
+    expect(result.sessions[0]).toMatchObject({
+      tokenHash: sha256Hex('only-token'),
+      isCurrent: false,
+    });
   });
 
   it('extracts the current token from a direct session object', async () => {
@@ -225,7 +270,7 @@ describe('getAdminSessions', () => {
     await expect(getAdminSessions()).resolves.toEqual({
       sessions: [
         {
-          token: 'direct-token',
+          tokenHash: sha256Hex('direct-token'),
           id: '',
           userAgent: null,
           ipAddress: null,
@@ -244,7 +289,7 @@ describe('getAdminSessions', () => {
     await expect(getAdminSessions()).resolves.toEqual({
       sessions: [
         {
-          token: 'session-token',
+          tokenHash: sha256Hex('session-token'),
           id: '',
           userAgent: null,
           ipAddress: null,
@@ -274,7 +319,7 @@ describe('getAdminSessions', () => {
 
     expect(result.sessions).toEqual([
       {
-        token: 'nested-token',
+        tokenHash: sha256Hex('nested-token'),
         id: '',
         userAgent: null,
         ipAddress: null,
@@ -293,8 +338,15 @@ describe('getAdminSessions', () => {
 });
 
 describe('revokeAdminSession', () => {
-  it('revokes the session and logs the event', async () => {
-    const result = await revokeAdminSession({ data: { sessionToken: 'other-token' } });
+  it('resolves the hash to the server-side token, revokes, and logs the hash only', async () => {
+    mockListSessions.mockResolvedValue([
+      { token: 'current-token', id: 'session-1' },
+      { token: 'other-token', id: 'session-2' },
+    ]);
+
+    const result = await revokeAdminSession({
+      data: { sessionTokenHash: sha256Hex('other-token') },
+    });
 
     expect(result).toEqual({ success: true });
     expect(mockRevokeSession).toHaveBeenCalledWith({
@@ -304,8 +356,18 @@ describe('revokeAdminSession', () => {
     expect(mockLogAuditEvent).toHaveBeenCalledWith({
       action: 'admin.session_revoked',
       userId: 'admin-user-1',
-      details: { sessionToken: 'other-token' },
+      details: { sessionTokenHash: sha256Hex('other-token') },
     });
+  });
+
+  it('throws without revoking when no session matches the hash', async () => {
+    mockListSessions.mockResolvedValue([{ token: 'other-token', id: 'session-2' }]);
+
+    await expect(
+      revokeAdminSession({ data: { sessionTokenHash: sha256Hex('unknown-token') } })
+    ).rejects.toThrow('Session not found');
+
+    expect(mockRevokeSession).not.toHaveBeenCalled();
   });
 
   it('falls back to unknown username when admin has no username', async () => {
@@ -314,14 +376,17 @@ describe('revokeAdminSession', () => {
       username: undefined,
       permissions: [],
     });
+    mockListSessions.mockResolvedValue([{ token: 'other-token', id: 'session-2' }]);
 
-    const result = await revokeAdminSession({ data: { sessionToken: 'other-token' } });
+    const result = await revokeAdminSession({
+      data: { sessionTokenHash: sha256Hex('other-token') },
+    });
 
     expect(result).toEqual({ success: true });
     expect(mockLogAuditEvent).toHaveBeenCalledWith({
       action: 'admin.session_revoked',
       userId: 'unknown',
-      details: { sessionToken: 'other-token' },
+      details: { sessionTokenHash: sha256Hex('other-token') },
     });
   });
 });

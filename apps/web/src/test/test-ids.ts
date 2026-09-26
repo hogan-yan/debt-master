@@ -334,6 +334,7 @@ export const SECURITY = {
 // ─── Settings Two-Factor Setup ────────────────────────────────────
 export const TWO_FACTOR = {
   SECTION: 'two-factor-section',
+  STATUS_UNAVAILABLE: 'two-factor-status-unavailable',
   STATUS_ENABLED: 'two-factor-status-enabled',
   STATUS_DISABLED: 'two-factor-status-disabled',
   ENABLE_PASSWORD_INPUT: 'two-factor-enable-password-input',

@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormSubmit } from '@/components/ui/form';
 import { FormInput } from '@/components/ui/form-fields';
 import { useFormSubmission } from '@/hooks';
+import { m } from '@/paraglide/messages';
 import {
   disableTwoFactor,
   enableTwoFactor,
@@ -134,9 +135,25 @@ export function TwoFactorSetup() {
   }
 
   if (status === 'unavailable') {
-    // 2FA plugin not mounted (ENABLE_2FA != 'true'): render nothing rather
-    // than advertise a feature this environment doesn't provide.
-    return null;
+    // 2FA plugin not mounted (ENABLE_2FA != 'true'): say so instead of
+    // silently omitting the feature — a self-hoster can turn it on.
+    return (
+      <Card data-testid={TWO_FACTOR.SECTION}>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ShieldOff className="h-5 w-5" />
+            {m.settings_twoFactor_title()}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground" data-testid={TWO_FACTOR.STATUS_UNAVAILABLE}>
+            {m.settings_twoFactor_unavailable_prefix()}
+            <code>ENABLE_2FA=true</code>
+            {m.settings_twoFactor_unavailable_suffix()}
+          </p>
+        </CardContent>
+      </Card>
+    );
   }
 
   const title = (

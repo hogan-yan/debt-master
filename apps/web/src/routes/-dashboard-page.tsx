@@ -247,12 +247,12 @@ export function DashboardPage({ debtLeaderboard, debtOverview }: DashboardPagePr
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border pb-4">
         <div>
-          <h2
+          <h1
             className="text-3xl font-display font-semibold tracking-tight"
             data-testid={DASHBOARD.HEADING}
           >
             {m.dashboard_pageTitle()}
-          </h2>
+          </h1>
           <p className="text-lg text-muted-foreground mt-2">{m.dashboard_pageSubtitle()}</p>
         </div>
       </div>
@@ -286,80 +286,108 @@ export function DashboardPage({ debtLeaderboard, debtOverview }: DashboardPagePr
               description: m.dashboard_onboarding_step3_desc(),
               done: debtOverview.totalLunches > 0,
               actionLabel: m.dashboard_empty_logLunch(),
-              onAction: () => navigate({ to: '/expenses/' }),
+              onAction: () => navigate({ to: '/expenses/', search: { new: true } }),
             },
           ]}
         />
       )}
 
-      {/* Tab Content */}
-      {activeTab === 'overview' && (
-        <OverviewTab debtOverview={debtOverview} validDebtors={validDebtors} />
-      )}
+      {/* Tab Content — each panel pairs with its tab via aria-controls */}
+      <div
+        id="panel-overview"
+        role="tabpanel"
+        aria-labelledby="tab-overview"
+        hidden={activeTab !== 'overview'}
+      >
+        {activeTab === 'overview' && (
+          <OverviewTab debtOverview={debtOverview} validDebtors={validDebtors} />
+        )}
+      </div>
 
-      {activeTab === 'debtors' && <DebtorsTab validDebtors={validDebtors} />}
+      <div
+        id="panel-debtors"
+        role="tabpanel"
+        aria-labelledby="tab-debtors"
+        hidden={activeTab !== 'debtors'}
+      >
+        {activeTab === 'debtors' && <DebtorsTab validDebtors={validDebtors} />}
+      </div>
 
-      {activeTab === 'restaurants' &&
-        (loadingStates.restaurants ? (
-          <div className="flex items-center justify-center h-96">
-            <div className="text-center space-y-4">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto" />
-              <p className="text-lg text-muted-foreground">
-                {m.dashboard_loading_restaurantData()}
-              </p>
-            </div>
-          </div>
-        ) : restaurantData ? (
-          <Suspense
-            fallback={
-              <div className="flex items-center justify-center h-96">
-                <div className="text-center space-y-4">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto" />
-                  <p className="text-lg text-muted-foreground">
-                    {m.dashboard_loading_restaurantCharts()}
-                  </p>
-                </div>
+      <div
+        id="panel-restaurants"
+        role="tabpanel"
+        aria-labelledby="tab-restaurants"
+        hidden={activeTab !== 'restaurants'}
+      >
+        {activeTab === 'restaurants' &&
+          (loadingStates.restaurants ? (
+            <div className="flex items-center justify-center h-96">
+              <div className="text-center space-y-4">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto" />
+                <p className="text-lg text-muted-foreground">
+                  {m.dashboard_loading_restaurantData()}
+                </p>
               </div>
-            }
-          >
-            <RestaurantsTab
-              debtOverview={debtOverview}
-              validDebtorsCount={validDebtors.length}
-              restaurantChartData={restaurantData}
-            />
-          </Suspense>
-        ) : null)}
-
-      {activeTab === 'spending' &&
-        (loadingStates.spending ? (
-          <div className="flex items-center justify-center h-96">
-            <div className="text-center space-y-4">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto" />
-              <p className="text-lg text-muted-foreground">
-                {m.dashboard_loading_spendingAnalytics()}
-              </p>
             </div>
-          </div>
-        ) : spendingData ? (
-          <Suspense
-            fallback={
-              <div className="flex items-center justify-center h-96">
-                <div className="text-center space-y-4">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto" />
-                  <p className="text-lg text-muted-foreground">
-                    {m.dashboard_loading_spendingCharts()}
-                  </p>
+          ) : restaurantData ? (
+            <Suspense
+              fallback={
+                <div className="flex items-center justify-center h-96">
+                  <div className="text-center space-y-4">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto" />
+                    <p className="text-lg text-muted-foreground">
+                      {m.dashboard_loading_restaurantCharts()}
+                    </p>
+                  </div>
                 </div>
+              }
+            >
+              <RestaurantsTab
+                debtOverview={debtOverview}
+                validDebtorsCount={validDebtors.length}
+                restaurantChartData={restaurantData}
+              />
+            </Suspense>
+          ) : null)}
+      </div>
+
+      <div
+        id="panel-spending"
+        role="tabpanel"
+        aria-labelledby="tab-spending"
+        hidden={activeTab !== 'spending'}
+      >
+        {activeTab === 'spending' &&
+          (loadingStates.spending ? (
+            <div className="flex items-center justify-center h-96">
+              <div className="text-center space-y-4">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto" />
+                <p className="text-lg text-muted-foreground">
+                  {m.dashboard_loading_spendingAnalytics()}
+                </p>
               </div>
-            }
-          >
-            <SpendingTab
-              spendingData={spendingData.analytics}
-              spendingTrends={spendingData.trends}
-              spendingInsights={spendingData.insights}
-            />
-          </Suspense>
-        ) : null)}
+            </div>
+          ) : spendingData ? (
+            <Suspense
+              fallback={
+                <div className="flex items-center justify-center h-96">
+                  <div className="text-center space-y-4">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto" />
+                    <p className="text-lg text-muted-foreground">
+                      {m.dashboard_loading_spendingCharts()}
+                    </p>
+                  </div>
+                </div>
+              }
+            >
+              <SpendingTab
+                spendingData={spendingData.analytics}
+                spendingTrends={spendingData.trends}
+                spendingInsights={spendingData.insights}
+              />
+            </Suspense>
+          ) : null)}
+      </div>
     </div>
   );
 }

@@ -159,6 +159,9 @@ const PaymentApplicationsCell = ({
             variant="ghost"
             size="sm"
             onClick={() => setIsExpanded(!isExpanded)}
+            aria-label={
+              isExpanded ? m.payment_col_collapseApplications() : m.payment_col_expandApplications()
+            }
             className="h-auto p-1 text-muted-foreground hover:text-foreground"
           >
             {isExpanded ? (

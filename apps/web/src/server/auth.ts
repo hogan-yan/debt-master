@@ -510,7 +510,9 @@ export const getAccessCodes = createServerFn({ method: 'GET' }).handler(async ()
       isActive: code.isActive,
       createdAt: code.createdAt,
       lastUsed: code.lastUsed,
-      createdBy: code.createdBy ?? null,
+      // Legacy rows store the literal 'unknown' (pre-join writer); render
+      // them as missing so the UI's dash fallback applies.
+      createdBy: code.createdBy && code.createdBy !== 'unknown' ? code.createdBy : null,
     }));
   } catch (error) {
     if (isAppError(error)) throw error;

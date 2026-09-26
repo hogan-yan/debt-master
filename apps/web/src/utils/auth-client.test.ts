@@ -121,6 +121,15 @@ describe('isSafeRedirectUrl', () => {
     expect(authClient.isSafeRedirectUrl('//evil.com')).toBe(false);
   });
 
+  it('rejects backslash-relative URLs (browsers treat \\ as / for special schemes)', () => {
+    expect(authClient.isSafeRedirectUrl('/\\evil.com')).toBe(false);
+    expect(authClient.isSafeRedirectUrl('/\\/evil.com')).toBe(false);
+  });
+
+  it('accepts backslashes later in the path (literal characters)', () => {
+    expect(authClient.isSafeRedirectUrl('/dashboard\\settings')).toBe(true);
+  });
+
   it('rejects URLs with null bytes', () => {
     expect(authClient.isSafeRedirectUrl('/dashboard\0.evil.com')).toBe(false);
   });

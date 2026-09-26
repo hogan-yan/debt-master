@@ -13,6 +13,15 @@ const mockVerifyTwoFactorSetup = vi.fn();
 const mockToDataURL = vi.fn();
 let mockIsSubmitting = false;
 
+vi.mock('@/paraglide/messages', () => ({
+  m: {
+    settings_twoFactor_title: () => 'Two-factor authentication',
+    settings_twoFactor_unavailable_prefix: () => 'Not available on this instance. Set ',
+    settings_twoFactor_unavailable_suffix: () =>
+      ' in the environment and restart to enable two-factor sign-in.',
+  },
+}));
+
 vi.mock('@/server/two-factor', () => ({
   enableTwoFactor: (...args: unknown[]) => mockEnableTwoFactor(...args),
   disableTwoFactor: (...args: unknown[]) => mockDisableTwoFactor(...args),
@@ -300,12 +309,24 @@ describe('TwoFactorSetup', () => {
     expect(screen.queryByText('Enter a 6-digit code')).not.toBeInTheDocument();
   });
 
-  it('renders nothing when status lookup fails (2FA disabled in env)', async () => {
+  it('shows an explanatory card when 2FA is unavailable on this instance', async () => {
+    mockGetTwoFactorStatus.mockRejectedValue(new Error('two-factor plugin not mounted'));
+    render(<TwoFactorSetup />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId(TWO_FACTOR.STATUS_UNAVAILABLE)).toBeInTheDocument();
+    });
+    expect(screen.getByTestId(TWO_FACTOR.SECTION)).toHaveTextContent('Two-factor authentication');
+    expect(screen.getByTestId(TWO_FACTOR.STATUS_UNAVAILABLE)).toHaveTextContent('ENABLE_2FA=true');
+  });
+
+  it('explains unavailability when status lookup fails (2FA disabled in env)', async () => {
     mockGetTwoFactorStatus.mockRejectedValue(new Error('unavailable'));
     render(<TwoFactorSetup />);
 
     await waitFor(() => {
-      expect(screen.queryByTestId(TWO_FACTOR.SECTION)).not.toBeInTheDocument();
+      expect(screen.getByTestId(TWO_FACTOR.STATUS_UNAVAILABLE)).toBeInTheDocument();
     });
+    expect(screen.getByTestId(TWO_FACTOR.SECTION)).toBeInTheDocument();
   });
 });

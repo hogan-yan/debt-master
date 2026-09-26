@@ -63,6 +63,8 @@ function formatAccessCodeDate(date: string | Date | null): string {
   return formatDate(String(date));
 }
 
+const CODES_PAGE_SIZE = 5;
+
 export function AccessCodeManager({ initialAccessCodes, onRefresh }: AccessCodeManagerProps) {
   const [accessCodes, setAccessCodes] = useState<AccessCode[]>(initialAccessCodes);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -189,7 +191,11 @@ export function AccessCodeManager({ initialAccessCodes, onRefresh }: AccessCodeM
     },
     {
       id: 'actions',
-      header: '',
+      header: () => <span className="sr-only">{m.settings_actions_sr()}</span>,
+      meta: {
+        headerClassName: 'sticky right-0 bg-background',
+        cellClassName: 'sticky right-0 bg-background',
+      },
       cell: ({ row }: { row: { original: AccessCode } }) => {
         const code = row.original;
         return (
@@ -216,7 +222,7 @@ export function AccessCodeManager({ initialAccessCodes, onRefresh }: AccessCodeM
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-semibold" data-testid="access-codes-heading">
             {m.settings_accessCodes_title()}
@@ -245,8 +251,8 @@ export function AccessCodeManager({ initialAccessCodes, onRefresh }: AccessCodeM
             <DataTable
               columns={columns}
               data={accessCodes}
-              pagination={true}
-              pageSize={5}
+              pagination={accessCodes.length > CODES_PAGE_SIZE}
+              pageSize={CODES_PAGE_SIZE}
               filtering={false}
               sorting={true}
             />
@@ -261,9 +267,7 @@ export function AccessCodeManager({ initialAccessCodes, onRefresh }: AccessCodeM
             <DialogTitle data-testid="generate-code-modal-title">
               {m.settings_generateCodeModalTitle()}
             </DialogTitle>
-            <DialogDescription>
-              A random code has been generated. You can use it or enter your own.
-            </DialogDescription>
+            <DialogDescription>{m.settings_generateCodeDescription()}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
@@ -291,7 +295,7 @@ export function AccessCodeManager({ initialAccessCodes, onRefresh }: AccessCodeM
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsModalOpen(false)}>
-              Cancel
+              {m.common_cancel()}
             </Button>
             <Button
               onClick={handleCreateCode}

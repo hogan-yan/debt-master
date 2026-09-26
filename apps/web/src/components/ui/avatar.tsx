@@ -89,17 +89,17 @@ export function getInitialsColor(name?: string): string {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
   }
 
+  // All 500/600 steps: white 12px initials need ≥4.5:1, the 400s are ~2.5:1.
   const colors = [
-    'bg-zinc-400',
     'bg-zinc-500',
     'bg-zinc-600',
-    'bg-neutral-400',
     'bg-neutral-500',
-    'bg-stone-400',
+    'bg-neutral-600',
     'bg-stone-500',
-    'bg-gray-400',
+    'bg-stone-600',
     'bg-gray-500',
-    'bg-slate-400',
+    'bg-slate-500',
+    'bg-gray-600',
   ] as const;
 
   return colorFromHash(hash, colors);

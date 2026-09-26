@@ -1,9 +1,8 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense } from 'react';
 import type { LedgerTokenProps } from '@/components/landing/ledger-hero';
 import type { SceneIndex, SceneTokenProps } from '@/components/landing/ledger-scenes';
 import { StepStatic } from '@/components/landing/scene-statics';
 import { TornEdge } from '@/components/landing/torn-edge';
-import { useTheme } from '@/hooks';
 import { m } from '@/paraglide/messages';
 import { APP_URL } from '@/utils/app-url';
 
@@ -15,16 +14,28 @@ import { APP_URL } from '@/utils/app-url';
  * decoration.
  */
 
-// Pulled from the locked app.css tokens (docs/design-system.md) — both
-// themes, so the canvases react to the theme toggle via inputProps.
-const SCENE_TOKENS: Record<'light' | 'dark', SceneTokenProps> = {
-  light: {
-    surface: 'hsl(0 0% 100%)',
-    text: 'hsl(222.2 84% 4.9%)',
-    muted: 'hsl(215.4 16.3% 42%)',
-    border: 'hsl(214.3 31.8% 91.4%)',
-    danger: 'hsl(0 76% 46%)',
-    success: 'hsl(150 60% 32%)',
+// Pulled from the locked app.css tokens (docs/design-system.md) as CSS
+// custom-property references, not baked per-theme literals: the pre-paint
+// script in __root.tsx sets .dark/.light on <html> before first paint (and
+// app.css keeps a prefers-color-scheme fallback for JS-off), so SSR HTML and
+// the first client render are already in the visitor's theme. Baking literal
+// light values and flipping after mount used to flash the whole page on
+// every refresh for dark-theme visitors. Values resolve live, so toggling
+// themes restyles the canvases without any re-render.
+//
+// MUST resolve paraglide messages at RENDER time, not module scope: on the
+// server, module evaluation runs before any request locale exists, so a
+// module-scope `m.*()` call bakes base-locale (English) text into every
+// locale-prefixed SSR response while the client hydrates with the URL
+// locale — React #418 text mismatches on /ja and /zh-tw.
+function getSceneTokens(): SceneTokenProps {
+  return {
+    surface: 'hsl(var(--background))',
+    text: 'hsl(var(--foreground))',
+    muted: 'hsl(var(--muted-foreground))',
+    border: 'hsl(var(--border))',
+    danger: 'hsl(var(--destructive-text))',
+    success: 'hsl(var(--success))',
     caption: m.landing_ledger_title(),
     outstandingLabel: m.landing_ledger_outstandingLabel(),
     settledLabel: m.landing_ledger_settledLabel(),
@@ -34,25 +45,8 @@ const SCENE_TOKENS: Record<'light' | 'dark', SceneTokenProps> = {
     afterSettlementHeader: m.landing_scene_after(),
     paidLine: m.landing_payment_paidLine(),
     confirmedLabel: m.landing_payment_confirmed(),
-  },
-  dark: {
-    surface: 'hsl(0 0% 8%)',
-    text: 'hsl(0 0% 88%)',
-    muted: 'hsl(0 0% 59%)',
-    border: 'hsl(0 0% 19%)',
-    danger: 'hsl(0 85% 70%)',
-    success: 'hsl(150 60% 55%)',
-    caption: m.landing_ledger_title(),
-    outstandingLabel: m.landing_ledger_outstandingLabel(),
-    settledLabel: m.landing_ledger_settledLabel(),
-    receiptCount: m.landing_receipt_count(),
-    overdueWeeks: m.landing_overdue_weeks(),
-    balancesHeader: m.landing_scene_balances(),
-    afterSettlementHeader: m.landing_scene_after(),
-    paidLine: m.landing_payment_paidLine(),
-    confirmedLabel: m.landing_payment_confirmed(),
-  },
-};
+  };
+}
 
 const LedgerHeroCard = lazy(() =>
   import('@/components/landing/ledger-hero').then((mod) => ({ default: mod.default }))
@@ -181,7 +175,6 @@ const FAQS = [
   { question: () => m.landing_faq_q3(), answer: () => m.landing_faq_a3() },
   { question: () => m.landing_faq_q4(), answer: () => m.landing_faq_a4() },
   { question: () => m.landing_faq_q5(), answer: () => m.landing_faq_a5() },
-  { question: () => m.landing_faq_q6(), answer: () => m.landing_faq_a6() },
 ] as const;
 
 const STEP_CAPTIONS = [
@@ -197,7 +190,6 @@ function buildFaqJsonLd(): string {
     { question: m.landing_faq_q3(), answer: m.landing_faq_a3() },
     { question: m.landing_faq_q4(), answer: m.landing_faq_a4() },
     { question: m.landing_faq_q5(), answer: m.landing_faq_a5() },
-    { question: m.landing_faq_q6(), answer: m.landing_faq_a6() },
   ];
   return JSON.stringify({
     '@context': 'https://schema.org',
@@ -272,13 +264,7 @@ function SceneSection(props: {
 }
 
 export function LandingPage() {
-  const { effectiveTheme } = useTheme();
-  // SSR and the first client render both bake light tokens; hydration keeps
-  // baked inline styles when no prop value changes, so after mount we flip
-  // to the real theme — the changed style props force React to patch the DOM.
-  const [isMounted, setIsMounted] = useState(false);
-  useEffect(() => setIsMounted(true), []);
-  const tokens = SCENE_TOKENS[isMounted ? effectiveTheme : 'light'];
+  const tokens = getSceneTokens();
 
   return (
     <div className="max-w-5xl mx-auto" data-testid="landing-page">
@@ -452,12 +438,37 @@ export function LandingPage() {
             >
               {m.landing_cta_button()}
             </a>
-            <a
-              href="/app"
-              className="mt-4 block text-sm text-[hsl(0_0%_55%)] underline-offset-4 hover:text-[hsl(0_0%_88%)] hover:underline focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-sm"
-            >
-              {m.landing_cta_appLink()}
-            </a>
+            {/* Legal + project links — the footer otherwise carries no navigation */}
+            <div className="mt-10 flex items-center justify-center gap-3 text-xs text-[hsl(0_0%_45%)]">
+              <a href="/privacy" className="hover:text-[hsl(0_0%_88%)] hover:underline">
+                Privacy
+              </a>
+              <span aria-hidden="true">·</span>
+              <a href="/terms" className="hover:text-[hsl(0_0%_88%)] hover:underline">
+                Terms
+              </a>
+              <span aria-hidden="true">·</span>
+              <a
+                href="https://github.com/hogan-yan/debt-master"
+                className="hover:text-[hsl(0_0%_88%)] hover:underline"
+              >
+                GitHub
+              </a>
+              <span aria-hidden="true">·</span>
+              <a
+                href="https://github.com/hogan-yan/debt-master/blob/main/docs/self-hosting.md"
+                className="hover:text-[hsl(0_0%_88%)] hover:underline"
+              >
+                Docs
+              </a>
+              <span aria-hidden="true">·</span>
+              <a
+                href="https://github.com/hogan-yan/debt-master/blob/main/SECURITY.md"
+                className="hover:text-[hsl(0_0%_88%)] hover:underline"
+              >
+                Security
+              </a>
+            </div>
           </div>
           <TornEdge color="hsl(0 0% 8%)" flip />
         </div>

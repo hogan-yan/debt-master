@@ -13,6 +13,7 @@ import { AppError, ErrorCode } from '@/utils/errors';
 
 import { infraConfig } from '../config';
 import type { StorageAdapter, StorageLocation } from './storage-adapter';
+import { STORAGE_URL_TTL_SECONDS } from './storage-signing';
 
 let cached: StorageAdapter | null = null;
 
@@ -46,9 +47,6 @@ export function __resetStorageAdapterCacheForTests(): void {
   cached = null;
 }
 
-/** Default presigned-URL expiry (24h), matching the prior MinIO behaviour. */
-const DEFAULT_STORAGE_URL_EXPIRY_SECONDS = 24 * 60 * 60;
-
 /**
  * Validate, buffer, and store a file in one step. Centralises the
  * validate → upload sequence used across expense and payment mutations.
@@ -81,7 +79,7 @@ export async function deleteFromStorage(bucket: string, objectKey: string): Prom
 export async function getStorageUrl(
   bucket: string,
   objectKey: string,
-  expirySeconds: number = DEFAULT_STORAGE_URL_EXPIRY_SECONDS
+  expirySeconds: number = STORAGE_URL_TTL_SECONDS
 ): Promise<string> {
   return (await getStorageAdapter()).getUrl(bucket, objectKey, expirySeconds);
 }

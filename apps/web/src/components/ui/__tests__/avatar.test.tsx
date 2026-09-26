@@ -102,7 +102,8 @@ describe('getInitialsColor', () => {
 
   it('returns a color for a name', () => {
     const color = getInitialsColor('John');
-    expect(color).toMatch(/^bg-[a-z]+-400$/);
+    // 500/600 steps only — white initials need ≥4.5:1 contrast (UX audit 2026-09-14)
+    expect(color).toMatch(/^bg-[a-z]+-(500|600)$/);
   });
 
   it('returns consistent color for same name', () => {

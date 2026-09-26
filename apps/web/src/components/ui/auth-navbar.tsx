@@ -46,9 +46,9 @@ function NavLink({ to, testId, children, mobile, onNavigate }: NavLinkProps) {
   const baseClasses =
     'rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2';
   const desktopClasses =
-    'hidden lg:inline-flex px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent';
+    'hidden xl:inline-flex px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent';
   const mobileClasses =
-    'block lg:hidden px-3 py-2 text-base text-muted-foreground hover:text-foreground hover:bg-accent';
+    'block xl:hidden px-3 py-2 text-base text-muted-foreground hover:text-foreground hover:bg-accent';
   const activeClasses = 'bg-accent text-foreground';
 
   return (
@@ -197,7 +197,7 @@ export function AuthNavbar() {
 
           {/* Desktop Navigation */}
           <div
-            className="hidden lg:flex items-center space-x-1"
+            className="hidden xl:flex items-center space-x-1"
             data-testid={NAV.DESKTOP_NAV_LINKS}
           >
             {navItems}
@@ -218,7 +218,7 @@ export function AuthNavbar() {
                     aria-expanded={isUserMenuOpen}
                   >
                     <EnhancedAvatar name={displayName} size="sm" />
-                    <span className="hidden lg:inline text-foreground">{displayName}</span>
+                    <span className="hidden xl:inline text-foreground">{displayName}</span>
                     {isAdmin && <span className={ADMIN_PILL_CLASS}>{m.role_admin()}</span>}
                     <ChevronDown className="h-4 w-4" />
                   </button>
@@ -245,7 +245,7 @@ export function AuthNavbar() {
           </div>
 
           {/* Mobile menu button */}
-          <div className="lg:hidden flex items-center space-x-2">
+          <div className="xl:hidden flex items-center space-x-2">
             <ThemeToggle />
             <LanguageSwitcher />
             <button
@@ -264,7 +264,7 @@ export function AuthNavbar() {
 
         {/* Mobile Navigation */}
         {isMobileMenuOpen && (
-          <div id="mobile-menu" className="lg:hidden border-t border-border">
+          <div id="mobile-menu" className="xl:hidden border-t border-border">
             <div className="px-2 pt-2 pb-3 space-y-1">
               <NavLink
                 to="/"

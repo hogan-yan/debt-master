@@ -12,8 +12,18 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { getJwtSecret } from '@/server/infrastructure/auth/auth-server-utils';
 
-/** Default signed-URL lifetime, matching the MinIO presigned-URL default. */
-export const STORAGE_URL_TTL_SECONDS = 24 * 60 * 60;
+/**
+ * Signed-URL lifetime, default 15 minutes. URLs are minted per view and
+ * re-issued on every render, so a short TTL shrinks the leaked-link window
+ * (group chat, shared browser history) at no UX cost. Override with
+ * STORAGE_URL_TTL_SECONDS for deploys with unusual caching needs.
+ */
+function readStorageUrlTtl(): number {
+  const parsed = Number.parseInt(process.env.STORAGE_URL_TTL_SECONDS || '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 15 * 60;
+}
+
+export const STORAGE_URL_TTL_SECONDS = readStorageUrlTtl();
 
 function computeSignature(bucket: string, objectKey: string, expiresAt: number): string {
   return createHmac('sha256', getJwtSecret())

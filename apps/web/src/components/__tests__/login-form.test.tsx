@@ -91,6 +91,7 @@ vi.mock('@/paraglide/messages', () => ({
     login_button_continue: () => 'Continue',
     login_button_verifying: () => 'Verifying...',
     login_button_human: () => 'Verifying human...',
+    login_button_verifyRequired: () => 'Verification required — retry above',
     login_button_admin: () => 'Sign in with Authentik',
     login_divider_or: () => 'OR',
     login_successTitle: () => 'Success',

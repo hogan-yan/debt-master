@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 
 const ADMIN = { email: 'qa-admin@test.local', password: 'Str0ng!QaPass!2026' };
-const CODE_FREE = 'JUDebt123!~';
+const CODE_FREE = process.env.QA_ACCESS_CODE ?? 'JUDebt123!~';
 
 function db(sql: string): string {
   // CI sets DATABASE_URL to the Postgres service container; locally fall back

@@ -30,6 +30,7 @@ vi.mock('minio', () => {
 });
 
 import { __resetMinioClientForTests, minioAdapter } from './minio-adapter';
+import { STORAGE_URL_TTL_SECONDS } from './storage-signing';
 
 describe('minioAdapter', () => {
   beforeEach(() => {
@@ -127,11 +128,15 @@ describe('minioAdapter', () => {
   });
 
   describe('getUrl', () => {
-    it('generates a presigned URL with the default 24h expiry', async () => {
+    it('generates a presigned URL with the shared default TTL', async () => {
       const url = await minioAdapter.getUrl('bucket', 'object-key');
 
       expect(url).toBe('https://minio.example.com/presigned-url');
-      expect(mockMethods.presignedGetObject).toHaveBeenCalledWith('bucket', 'object-key', 86_400);
+      expect(mockMethods.presignedGetObject).toHaveBeenCalledWith(
+        'bucket',
+        'object-key',
+        STORAGE_URL_TTL_SECONDS
+      );
     });
 
     it('supports a custom expiry', async () => {

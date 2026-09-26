@@ -26,7 +26,11 @@ type AnyReactFormApi = ReactFormExtendedApi<
 // Generic form context for accessing form API in child components
 const formDebugMap = new WeakMap<HTMLFormElement, AnyReactFormApi>();
 
-const FormContext = React.createContext<AnyReactFormApi | null>(null);
+const FormContext = React.createContext<{
+  form: AnyReactFormApi;
+  /** Set by <Form onSubmitAttempt>; fired by FormSubmit before submission. */
+  onSubmitAttempt?: () => void;
+} | null>(null);
 
 export function useFormContext() {
   const context = React.useContext(FormContext);
@@ -40,6 +44,8 @@ export function useFormContext() {
 interface FormProps<TFormData> {
   children: React.ReactNode;
   onSubmit: (values: TFormData, formApi: AnyFormApi) => void | Promise<void>;
+  /** Runs on every submit attempt (before validation). */
+  onSubmitAttempt?: () => void;
   defaultValues?: { [K in keyof TFormData]?: TFormData[K] | undefined };
   className?: string;
 }
@@ -47,6 +53,7 @@ interface FormProps<TFormData> {
 export function Form<TFormData = Record<string, unknown>>({
   children,
   onSubmit,
+  onSubmitAttempt,
   defaultValues,
   className,
   ...props
@@ -65,12 +72,16 @@ export function Form<TFormData = Record<string, unknown>>({
   }, [form]);
 
   return (
-    <FormContext.Provider value={form as AnyReactFormApi}>
+    <FormContext.Provider value={{ form: form as AnyReactFormApi, onSubmitAttempt }}>
       <form
         ref={formRef}
         onSubmit={(e) => {
           e.preventDefault();
           e.stopPropagation();
+          // Native-submit fallback (FormSubmit usually drives the form
+          // directly). Fires on every attempt, valid or not, so forms can
+          // reveal "you missed something" only after a try.
+          onSubmitAttempt?.();
           form.handleSubmit();
         }}
         className={cn('space-y-6', className)}
@@ -112,7 +123,7 @@ interface FormControlProps {
 }
 
 export function FormControl({ children, name, validate, transform }: FormControlProps) {
-  const form = useFormContext();
+  const { form } = useFormContext();
 
   return (
     <form.Field
@@ -194,7 +205,8 @@ export function FormSubmit({
   onClick,
   ...props
 }: FormSubmitProps) {
-  const form = useFormContext();
+  const context = useFormContext();
+  const form = context.form;
   const isSubmitting = form.state.isSubmitting;
   const canSubmit = form.state.canSubmit;
 
@@ -204,6 +216,7 @@ export function FormSubmit({
     // TanStack Form submission so the form always submits.
     e.preventDefault();
     e.stopPropagation();
+    context.onSubmitAttempt?.();
     void form.handleSubmit();
     onClick?.(e);
   };

@@ -53,11 +53,26 @@ function SetupPage() {
     };
   }, []);
 
-  // Once setup is no longer required, bounce to the login page.
+  // Once setup is no longer required, send the visitor somewhere useful:
+  // a signed-in admin goes to the app, everyone else to the login page.
   useEffect(() => {
-    if (status === 'unavailable') {
-      navigate({ to: '/login/' });
-    }
+    if (status !== 'unavailable') return;
+    let cancelled = false;
+    void (async () => {
+      let hasSession = false;
+      try {
+        const { data } = await betterAuthClient.getSession();
+        hasSession = Boolean(data?.session);
+      } catch {
+        hasSession = false;
+      }
+      if (!cancelled) {
+        navigate({ to: hasSession ? '/' : '/login/' });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [status, navigate]);
 
   const { isSubmitting, handleSubmit } = useFormSubmission({

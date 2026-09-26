@@ -6,31 +6,24 @@
  * The page is only usable while zero admins exist AND the admin provider is
  * Better Auth; it locks the moment any admin is created.
  */
-import { timingSafeEqual } from 'node:crypto';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { createServerFn } from '@tanstack/react-start';
 import * as z from 'zod';
 import { logAuditEvent } from '@/server/infrastructure/audit-log';
 import { infraConfig } from '@/server/infrastructure/config';
-import { createServerLogger } from '@/server/infrastructure/logger';
 import { isLocalSetupAllowed } from '@/server/infrastructure/network';
 import { prisma } from '@/server/infrastructure/prisma';
 import { MIN_PASSWORD_LENGTH, validatePassword } from '@/utils/password-policy';
 
-const logger = createServerLogger('setup', process.env.NODE_ENV === 'development');
-
-if (process.env.NODE_ENV === 'production' && !process.env.SETUP_TOKEN) {
-  logger.warn(
-    'SETUP_TOKEN is not set. First-run setup is protected only by the local-network check; set SETUP_TOKEN to also require a shared secret.'
-  );
-}
-
 /**
- * Length-checked constant-time comparison for the setup token.
+ * Constant-time comparison for the setup token. Both sides are hashed to
+ * fixed-length digests first: comparing raw bytes needs a length early-return
+ * (which leaks the token's length via timing), while digest comparison is
+ * always the same width. Same pattern as `storage-signing.ts`.
  */
 function setupTokenMatches(configured: string, provided: string): boolean {
-  const expected = Buffer.from(configured, 'utf8');
-  const actual = Buffer.from(provided, 'utf8');
-  if (expected.length !== actual.length) return false;
+  const expected = createHash('sha256').update(configured, 'utf8').digest();
+  const actual = createHash('sha256').update(provided, 'utf8').digest();
   return timingSafeEqual(expected, actual);
 }
 

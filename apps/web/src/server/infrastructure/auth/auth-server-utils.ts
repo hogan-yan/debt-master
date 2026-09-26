@@ -161,6 +161,13 @@ export const RATE_LIMIT = {
     windowMs: 5 * 60 * 1000,
     blockDurationMs: 15 * 60 * 1000,
   },
+  // Colleague payment claims: the one colleague-reachable write RPC (files a
+  // pending payment + optional proof upload). Per-IP, 20 per 5 minutes.
+  CLAIM: {
+    maxAttempts: 20,
+    windowMs: 5 * 60 * 1000,
+    blockDurationMs: 15 * 60 * 1000,
+  },
 };
 
 /**

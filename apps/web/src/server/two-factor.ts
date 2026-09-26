@@ -89,6 +89,9 @@ export const enableTwoFactor = createServerFn({ method: 'POST' })
   .validator(enableTwoFactorSchema)
   .handler(async ({ data }): Promise<EnableTwoFactorResult> => {
     await requireAdminFromCookie();
+    // Password-guessable endpoint that calls auth.api directly (bypassing
+    // better-auth's HTTP-mount limiter) — throttle it like verify/disable.
+    await checkTwoFactorRateLimit('enable');
 
     const auth = getAuth();
     const result = await auth.api.enableTwoFactor({

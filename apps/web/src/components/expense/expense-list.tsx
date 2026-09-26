@@ -213,13 +213,19 @@ const ParticipantsMenu = memo(
     return (
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger asChild>
-          <div className="flex items-center space-x-2 cursor-pointer group">
+          {/* button (not div): the trigger carries type/aria-haspopup/aria-expanded,
+              which are only legal on button-ish roles — a bare div is an axe
+              Critical (aria-allowed-attr). */}
+          <button
+            type="button"
+            className="flex items-center space-x-2 cursor-pointer group bg-transparent border-0 p-0"
+          >
             {renderParticipants(participants)}
             <span className="text-sm text-foreground">
               <Users className="-ml-0.5 w-3 h-3 inline mr-0.5 text-muted-foreground" />
               {totalParticipants}
             </span>
-          </div>
+          </button>
         </DropdownMenuTrigger>
         {open && (
           <DropdownMenuContent className="w-56" align="start">
@@ -355,7 +361,7 @@ const DesktopExpenseRow = memo(
               {expense.restaurant?.name || m.expense_detail_unknownRestaurant()}
             </Link>
             {expense.restaurant?.address && (
-              <div className="flex items-center text-xs text-muted-foreground/80">
+              <div className="flex items-center text-xs text-muted-foreground">
                 <MapPin className="w-3 h-3 mr-1 flex-shrink-0" />
                 <span className="truncate max-w-[220px]">{expense.restaurant.address}</span>
               </div>

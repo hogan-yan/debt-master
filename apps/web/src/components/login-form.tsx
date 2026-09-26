@@ -93,20 +93,19 @@ export function LoginForm({ className, redirectTo, ...props }: LoginFormProps) {
   };
 
   /**
-   * Handle Turnstile errors
+   * Handle Turnstile errors. The server is fail-closed (a missing or bad
+   * token is always rejected), so the only honest path forward is a retry —
+   * never a "bypass". The widget's own alert card carries the message and
+   * the Try Again button.
    */
   const handleTurnstileError = (error: unknown) => {
     setTurnstileToken(null);
-
-    // Check if this is a PAT-related error
     if (error && typeof error === 'string' && error.includes('Private Access Token')) {
       setTurnstileError(
-        'Security verification failed due to Private Access Token issues. You can bypass this verification below.'
+        'Security verification failed due to Private Access Token issues. Use Try Again to retry.'
       );
     } else {
-      setTurnstileError(
-        'Security verification failed. Please try again or bypass verification if issues persist.'
-      );
+      setTurnstileError('Security verification failed. Please try again.');
     }
   };
 
@@ -262,7 +261,15 @@ export function LoginForm({ className, redirectTo, ...props }: LoginFormProps) {
     }
 
     // Show loading state when Turnstile is enabled but no token yet
-    if (isTurnstileEnabled && !turnstileToken && !turnstileError) {
+    if (isTurnstileEnabled && !turnstileToken) {
+      if (turnstileError) {
+        return (
+          <>
+            <Shield className="mr-2 h-4 w-4" />
+            {m.login_button_verifyRequired()}
+          </>
+        );
+      }
       return (
         <>
           <Shield className="mr-2 h-4 w-4 animate-pulse" />
@@ -282,9 +289,9 @@ export function LoginForm({ className, redirectTo, ...props }: LoginFormProps) {
             {/* Colleague Login Section */}
             <div className="space-y-4">
               <div className="text-center">
-                <h3 className="text-lg font-semibold" data-testid={AUTH.COLLEAGUE_ACCESS_HEADING}>
+                <h2 className="text-lg font-semibold" data-testid={AUTH.COLLEAGUE_ACCESS_HEADING}>
                   {m.login_title_colleague()}
-                </h3>
+                </h2>
                 <p className="text-sm text-muted-foreground">{m.login_desc_colleague()}</p>
               </div>
 
@@ -304,9 +311,12 @@ export function LoginForm({ className, redirectTo, ...props }: LoginFormProps) {
                     validate={validateAccessCodeField}
                   />
 
-                  {/* Turnstile Widget */}
+                  {/* Turnstile Widget — invisible; its built-in alert card
+                      (with Try Again) renders inline when verification fails.
+                      No absolute wrapper: it used to escape the card and
+                      overlap the page heading. */}
                   {isTurnstileEnabled && turnstileSiteKey && (
-                    <div className="absolute top-0 left-0">
+                    <div className="mt-1">
                       <TurnstileWidget
                         siteKey={turnstileSiteKey}
                         size="invisible"
@@ -317,22 +327,16 @@ export function LoginForm({ className, redirectTo, ...props }: LoginFormProps) {
                         onTimeout={handleTurnstileExpired}
                       />
                       {turnstileError && (
-                        <div className="text-sm text-destructive-text mt-1">
+                        <p role="alert" className="mt-1 text-sm text-destructive-text">
                           {turnstileError}
-                          <br />
-                          <p className="text-xs text-muted-foreground">
-                            If you are having issues, please contact your admin.
-                          </p>
-                        </div>
+                        </p>
                       )}
                     </div>
                   )}
 
                   <FormSubmit
                     data-testid={AUTH.COLLEAGUE_LOGIN_BTN}
-                    disabled={
-                      isSubmitting || (isTurnstileEnabled && !turnstileToken && !turnstileError)
-                    }
+                    disabled={isSubmitting || (isTurnstileEnabled && !turnstileToken)}
                   >
                     {getButtonContent()}
                   </FormSubmit>
@@ -355,9 +359,9 @@ export function LoginForm({ className, redirectTo, ...props }: LoginFormProps) {
             {/* Admin Login Section */}
             <div className="space-y-4">
               <div className="text-center">
-                <h3 className="text-lg font-semibold" data-testid={AUTH.ADMIN_ACCESS_HEADING}>
+                <h2 className="text-lg font-semibold" data-testid={AUTH.ADMIN_ACCESS_HEADING}>
                   {m.login_title_admin()}
-                </h3>
+                </h2>
                 <p className="text-sm text-muted-foreground">
                   {authProvider === 'authentik'
                     ? m.login_desc_admin()

@@ -19,8 +19,16 @@ vi.mock('@/server/infrastructure/prisma', () => ({
     payment: {
       count: vi.fn(),
     },
+    accessCode: {
+      findUnique: vi.fn(),
+    },
+    expenseParticipant: {
+      findUnique: vi.fn(),
+    },
   },
 }));
+
+const mockCheckSharedRateLimit = vi.hoisted(() => vi.fn());
 
 vi.mock('@/server/infrastructure/auth/auth-cookie', () => ({
   getAuthFromCookie: vi.fn(),
@@ -69,6 +77,18 @@ vi.mock('./workflows/auto-apply-prepayments-for-expense-workflow', () => ({
   autoApplyPrepaymentsForExpenseWorkflow: vi.fn(),
 }));
 
+vi.mock('@/server/infrastructure/auth/auth-rate-limit', () => ({
+  getClientIdentifier: () => 'test-ip',
+}));
+
+vi.mock('@/server/infrastructure/auth/auth-server-utils', () => ({
+  RATE_LIMIT: { CLAIM: { maxAttempts: 20, windowMs: 300_000, blockDurationMs: 900_000 } },
+}));
+
+vi.mock('@/server/infrastructure/auth/rate-limit-store', () => ({
+  checkSharedRateLimit: (...args: unknown[]) => mockCheckSharedRateLimit(...args),
+}));
+
 import {
   getAuthFromCookie,
   requireAdminFromCookie,
@@ -103,6 +123,10 @@ beforeEach(() => {
   vi.mocked(prisma.$transaction).mockImplementation(
     async (callback: (tx: typeof prisma) => Promise<unknown>) => callback(prisma)
   );
+  // claimPayment default: admin session (gate skipped). Individual tests override.
+  vi.mocked(requireAuthFromCookie).mockResolvedValue({ isAdmin: true, permissions: [] } as never);
+  mockCheckSharedRateLimit.mockResolvedValue({ allowed: true, remainingAttempts: 20 });
+  vi.mocked(prisma.accessCode.findUnique).mockResolvedValue(null as never);
 });
 
 describe('createExpense', () => {
@@ -392,6 +416,226 @@ describe('claimPayment', () => {
     await expect((claimPayment as ServerFn)({ data: form })).rejects.toThrow(
       'Authentication required'
     );
+    expect(createClaimWorkflow).not.toHaveBeenCalled();
+  });
+
+  it('rejects a bound access code claiming for another colleague', async () => {
+    vi.mocked(requireAuthFromCookie).mockResolvedValue({
+      isAdmin: false,
+      permissions: [],
+      accessCodeId: 7,
+    } as never);
+    vi.mocked(prisma.accessCode.findUnique).mockResolvedValue({
+      colleagueId: 3,
+      isActive: true,
+      deletedAt: null,
+    } as never);
+    vi.mocked(prisma.expenseParticipant.findUnique).mockResolvedValue({ colleagueId: 4 } as never);
+
+    const form = createFormData({
+      participantId: '9',
+      paymentMethod: 'PAYME',
+      paymentProofFile: null,
+    });
+
+    await expect((claimPayment as ServerFn)({ data: form })).rejects.toThrow(
+      /only file claims for yourself/i
+    );
+    expect(createClaimWorkflow).not.toHaveBeenCalled();
+  });
+
+  it('allows a bound access code claiming for its own colleague', async () => {
+    vi.mocked(requireAuthFromCookie).mockResolvedValue({
+      isAdmin: false,
+      permissions: [],
+      accessCodeId: 7,
+    } as never);
+    vi.mocked(prisma.accessCode.findUnique).mockResolvedValue({
+      colleagueId: 3,
+      isActive: true,
+      deletedAt: null,
+    } as never);
+    vi.mocked(prisma.expenseParticipant.findUnique).mockResolvedValue({ colleagueId: 3 } as never);
+    vi.mocked(createClaimWorkflow).mockResolvedValue({
+      participantId: 9,
+      expenseId: 1,
+      colleagueId: 3,
+      participantAmount: new Prisma.Decimal('50'),
+      payment: { id: 2, amount: new Prisma.Decimal('50'), colleague: null },
+    } as never);
+
+    const form = createFormData({
+      participantId: '9',
+      paymentMethod: 'PAYME',
+      paymentProofFile: null,
+    });
+    const result = await (claimPayment as ServerFn)({ data: form });
+
+    expect(result).toEqual(expect.objectContaining({ success: true }));
+    expect(createClaimWorkflow).toHaveBeenCalled();
+  });
+
+  it('skips the ownership gate for admins', async () => {
+    vi.mocked(requireAuthFromCookie).mockResolvedValue({ isAdmin: true, permissions: [] } as never);
+    vi.mocked(createClaimWorkflow).mockResolvedValue({
+      participantId: 9,
+      expenseId: 1,
+      colleagueId: 4,
+      participantAmount: new Prisma.Decimal('50'),
+      payment: { id: 3, amount: new Prisma.Decimal('50'), colleague: null },
+    } as never);
+
+    const form = createFormData({
+      participantId: '9',
+      paymentMethod: 'PAYME',
+      paymentProofFile: null,
+    });
+    await (claimPayment as ServerFn)({ data: form });
+
+    expect(prisma.accessCode.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('blocks the claim when the shared limiter says no', async () => {
+    mockCheckSharedRateLimit.mockResolvedValue({ allowed: false, remainingAttempts: 0 });
+
+    const form = createFormData({
+      participantId: '9',
+      paymentMethod: 'PAYME',
+      paymentProofFile: null,
+    });
+
+    await expect((claimPayment as ServerFn)({ data: form })).rejects.toThrow(/too many attempts/i);
+    expect(createClaimWorkflow).not.toHaveBeenCalled();
+  });
+
+  it('rejects an inactive access code with AUTH_REQUIRED', async () => {
+    vi.mocked(requireAuthFromCookie).mockResolvedValue({
+      isAdmin: false,
+      permissions: [],
+      accessCodeId: 7,
+    } as never);
+    vi.mocked(prisma.accessCode.findUnique).mockResolvedValue({
+      colleagueId: 3,
+      isActive: false,
+      deletedAt: null,
+    } as never);
+
+    const form = createFormData({
+      participantId: '9',
+      paymentMethod: 'PAYME',
+      paymentProofFile: null,
+    });
+
+    await expect((claimPayment as ServerFn)({ data: form })).rejects.toThrow(
+      'Authentication required'
+    );
+    expect(createClaimWorkflow).not.toHaveBeenCalled();
+  });
+
+  it('rejects a soft-deleted access code with AUTH_REQUIRED', async () => {
+    vi.mocked(requireAuthFromCookie).mockResolvedValue({
+      isAdmin: false,
+      permissions: [],
+      accessCodeId: 7,
+    } as never);
+    vi.mocked(prisma.accessCode.findUnique).mockResolvedValue({
+      colleagueId: 3,
+      isActive: true,
+      deletedAt: new Date('2026-09-01T00:00:00.000Z'),
+    } as never);
+
+    const form = createFormData({
+      participantId: '9',
+      paymentMethod: 'PAYME',
+      paymentProofFile: null,
+    });
+
+    await expect((claimPayment as ServerFn)({ data: form })).rejects.toThrow(
+      'Authentication required'
+    );
+    expect(createClaimWorkflow).not.toHaveBeenCalled();
+  });
+
+  it('skips the colleague check for an unbound access code', async () => {
+    vi.mocked(requireAuthFromCookie).mockResolvedValue({
+      isAdmin: false,
+      permissions: [],
+      accessCodeId: 7,
+    } as never);
+    vi.mocked(prisma.accessCode.findUnique).mockResolvedValue({
+      colleagueId: null,
+      isActive: true,
+      deletedAt: null,
+    } as never);
+    vi.mocked(createClaimWorkflow).mockResolvedValue({
+      participantId: 9,
+      expenseId: 1,
+      colleagueId: 4,
+      participantAmount: new Prisma.Decimal('50'),
+      payment: { id: 4, amount: new Prisma.Decimal('50'), colleague: null },
+    } as never);
+
+    const form = createFormData({
+      participantId: '9',
+      paymentMethod: 'PAYME',
+      paymentProofFile: null,
+    });
+    await (claimPayment as ServerFn)({ data: form });
+
+    expect(prisma.expenseParticipant.findUnique).not.toHaveBeenCalled();
+    expect(createClaimWorkflow).toHaveBeenCalled();
+  });
+
+  it('throttles with the claim: per-IP key and the CLAIM budget', async () => {
+    vi.mocked(requireAuthFromCookie).mockResolvedValue({
+      isAdmin: false,
+      permissions: [],
+      accessCodeId: 7,
+    } as never);
+    vi.mocked(prisma.accessCode.findUnique).mockResolvedValue({
+      colleagueId: 3,
+      isActive: true,
+      deletedAt: null,
+    } as never);
+    vi.mocked(prisma.expenseParticipant.findUnique).mockResolvedValue({ colleagueId: 3 } as never);
+    vi.mocked(createClaimWorkflow).mockResolvedValue({
+      participantId: 9,
+      expenseId: 1,
+      colleagueId: 3,
+      participantAmount: new Prisma.Decimal('50'),
+      payment: { id: 5, amount: new Prisma.Decimal('50'), colleague: null },
+    } as never);
+
+    const form = createFormData({
+      participantId: '9',
+      paymentMethod: 'PAYME',
+      paymentProofFile: null,
+    });
+    await (claimPayment as ServerFn)({ data: form });
+
+    expect(mockCheckSharedRateLimit).toHaveBeenCalledWith('claim:test-ip', {
+      maxAttempts: 20,
+      windowMs: 300_000,
+      blockDurationMs: 900_000,
+    });
+  });
+
+  it('rate-limits before the ownership gate runs', async () => {
+    vi.mocked(requireAuthFromCookie).mockResolvedValue({
+      isAdmin: false,
+      permissions: [],
+      accessCodeId: 7,
+    } as never);
+    mockCheckSharedRateLimit.mockResolvedValue({ allowed: false, remainingAttempts: 0 });
+
+    const form = createFormData({
+      participantId: '9',
+      paymentMethod: 'PAYME',
+      paymentProofFile: null,
+    });
+
+    await expect((claimPayment as ServerFn)({ data: form })).rejects.toThrow(/too many attempts/i);
+    expect(prisma.accessCode.findUnique).not.toHaveBeenCalled();
     expect(createClaimWorkflow).not.toHaveBeenCalled();
   });
 });

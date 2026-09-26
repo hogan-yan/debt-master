@@ -1,15 +1,32 @@
 # Debt Master
 
-A self-hosted lunch-debt ledger for workplace teams that eat together.
+**A free, open-source, self-hosted Splitwise alternative for workplace lunch debts.**
 
-Someone orders for the whole table. Someone else covers the taxi. A month later nobody remembers who owes what, and the group chat gets weird. Debt Master keeps the tally so you do not have to.
+Someone orders for the whole table. Someone else covers the taxi. A month later nobody remembers who owes what, and the group chat gets weird. Debt Master is a running ledger for teams that eat together: it keeps the tab, so you do not have to.
+
+<p align="center">
+  <img src="docs/screenshots/dashboard.png" alt="Debt Master dashboard: every colleague's running tab, who owes what at a glance" width="960">
+</p>
 
 ## What it does
 
-- Admins log shared lunches and payments.
+- Admins log shared lunches and payments in about a minute.
 - Every colleague sees their own running tab in the browser.
-- Payments clear only when both sides confirm them.
-- Colleagues sign in with an access code. No passwords to forget.
+- Payments clear only when both sides confirm them — settled means settled, on the record.
+- Colleagues sign in with an access code. No passwords to forget, no accounts to herd.
+- Self-hosted: names and amounts never leave your server.
+
+## Why not just use Splitwise?
+
+Splitwise is great at splitting a trip. A workplace lunch tab is a different shape — it never ends, and colleagues should not need an account in yet another cloud app.
+
+|  | Splitwise | Debt Master |
+| --- | --- | --- |
+| Shape | One-off group splits | A running ledger that never resets |
+| Hosting | Their cloud | Your server, one Docker container |
+| Colleague signup | Full accounts for everyone | One access code each, no passwords |
+| Settling a debt | Someone remembers it's paid | Both sides confirm it, and it's on the record |
+| Price | Free tier with ads, Pro plan above | Free. MIT. The whole thing. |
 
 ## Requirements
 

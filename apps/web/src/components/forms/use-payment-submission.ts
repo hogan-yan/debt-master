@@ -1,11 +1,18 @@
 /**
- * usePaymentSubmission — wires useFormSubmission and owns the validateAndSubmit callback.
+ * usePaymentSubmission — wires validation and the validateAndSubmit callback.
  * Keeps all validation logic and form-data assembly in one place.
+ *
+ * Ownership note: the CALLER (page) owns the actual submission via `onSubmit`
+ * — it wraps the server call in its own useFormSubmission, which toasts
+ * success/error and refreshes data. This hook deliberately does NOT wrap
+ * `onSubmit` in a second useFormSubmission: a nested wrapper would show a
+ * success toast even when the page handler swallowed a server error (the
+ * handler reports failures itself and returns normally), closing the dialog
+ * over a failed payment.
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { toast } from 'sonner';
-import { useFormSubmission } from '@/hooks';
 import type { CreatePaymentSchema } from '@/lib/schemas';
 import { m } from '@/paraglide/messages';
 import { formatCurrency } from '@/utils/formatters';
@@ -16,9 +23,7 @@ export interface UsePaymentSubmissionParams {
   selectedExpenseIds: number[];
   expenseAmounts: Record<number, string>;
   totalAmount: number;
-  paymentId: number | undefined;
   onSubmit: (data: CreatePaymentSchema) => Promise<void>;
-  onSuccess: () => void;
 }
 
 interface UsePaymentSubmissionReturn {
@@ -31,19 +36,9 @@ export function usePaymentSubmission({
   selectedExpenseIds,
   expenseAmounts,
   totalAmount,
-  paymentId,
   onSubmit,
-  onSuccess,
 }: UsePaymentSubmissionParams): UsePaymentSubmissionReturn {
-  const { isSubmitting, handleSubmit } = useFormSubmission({
-    onSuccess,
-    successTitle: m.payment_form_successTitle(),
-    successMessage:
-      formState.paymentMode === 'PREPAYMENT'
-        ? m.payment_form_prepaymentSuccess()
-        : m.payment_form_expensePaymentSuccess(),
-    errorTitle: m.payment_form_errorTitle(),
-  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const validateAndSubmit = useCallback(
     async (e: React.FormEvent): Promise<void> => {
@@ -89,39 +84,31 @@ export function usePaymentSubmission({
       const keepFlag = formState.keepExistingProof && !proofFile;
       const removeFlag = !formState.keepExistingProof && !proofFile && formState.hadExistingProof;
 
-      if (paymentId) {
-        const formData = new FormData();
-        formData.append('colleagueId', colleagueId);
-        formData.append('amount', editableAmount);
-        formData.append('date', date);
-        formData.append('paymentType', paymentType);
-        formData.append('id', paymentId.toString());
-        if (proofFile) formData.append('paymentProofFile', proofFile);
-        formData.append('keepExistingProof', keepFlag.toString());
-        formData.append('removeExistingProof', removeFlag.toString());
-        if (paymentMode === 'EXPENSE_PAYMENT') {
-          formData.append('expenseSelection.selectedIds', JSON.stringify(selectedExpenseIds));
-          formData.append('expenseSelection.amounts', JSON.stringify(expenseAmounts));
-        }
+      setIsSubmitting(true);
+      try {
+        await onSubmit({
+          colleagueId,
+          amount: editableAmount,
+          date,
+          paymentType,
+          paymentProofFile: proofFile ?? undefined,
+          keepExistingProof: !!keepFlag,
+          removeExistingProof: !!removeFlag,
+          selectedExpenseIds,
+          expenseAmounts,
+        });
+      } catch (error) {
+        // Callers that own the full submission flow (useFormSubmission)
+        // report their own errors; this catch is for callers that let the
+        // server error propagate. Either way the dialog stays open.
+        toast.error(m.payment_form_errorTitle(), {
+          description: error instanceof Error ? error.message : undefined,
+        });
+      } finally {
+        setIsSubmitting(false);
       }
-
-      await handleSubmit(
-        () =>
-          onSubmit({
-            colleagueId,
-            amount: editableAmount,
-            date,
-            paymentType,
-            paymentProofFile: proofFile ?? undefined,
-            keepExistingProof: !!keepFlag,
-            removeExistingProof: !!removeFlag,
-            selectedExpenseIds,
-            expenseAmounts,
-          }),
-        m.payment_form_processedSuccess({ amount: formatCurrency(amountNum) })
-      );
     },
-    [formState, selectedExpenseIds, expenseAmounts, totalAmount, paymentId, handleSubmit, onSubmit]
+    [formState, selectedExpenseIds, expenseAmounts, totalAmount, onSubmit]
   );
 
   return { isSubmitting, validateAndSubmit };

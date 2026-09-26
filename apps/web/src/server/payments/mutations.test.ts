@@ -42,6 +42,29 @@ vi.mock('./types', () => ({
   serializePayment: vi.fn((payment) => ({
     ...payment,
     amount: payment.amount instanceof Prisma.Decimal ? Number(payment.amount) : payment.amount,
+    // Mirror the real serializePayment application mapping: amounts become
+    // numbers and the (optionally included) expense relation is kept as a
+    // plain object with `expense: null` when absent.
+    applications: payment.applications
+      ? payment.applications.map(
+          (app: {
+            amount: Prisma.Decimal | number | string;
+            expense?: { amount: Prisma.Decimal | number } | null;
+          }) => ({
+            ...app,
+            amount: app.amount instanceof Prisma.Decimal ? Number(app.amount) : app.amount,
+            expense: app.expense
+              ? {
+                  ...app.expense,
+                  amount:
+                    app.expense.amount instanceof Prisma.Decimal
+                      ? Number(app.expense.amount)
+                      : app.expense.amount,
+                }
+              : null,
+          })
+        )
+      : [],
   })),
 }));
 
@@ -362,8 +385,10 @@ describe('createPayment', () => {
     const result = await (createPayment as ServerFn)({ data: form });
 
     expect(result.applications).toEqual([
-      { id: 1, amount: 25 },
-      { id: 2, amount: 25.5 },
+      { id: 1, amount: 25, expense: null },
+      // serializeDecimal passes strings through (Prisma rows are Decimals,
+      // never strings) — the Decimal path is what production exercises.
+      { id: 2, amount: '25.5', expense: null },
     ]);
   });
 
@@ -388,7 +413,7 @@ describe('createPayment', () => {
     const form = createFormData(baseFormData);
     const result = await (createPayment as ServerFn)({ data: form });
 
-    expect(result.applications).toEqual([{ id: 1, amount: 25.5 }]);
+    expect(result.applications).toEqual([{ id: 1, amount: 25.5, expense: null }]);
   });
 
   it('serializes autoPayments with Prisma.Decimal, number, string amounts and with/without expense', async () => {

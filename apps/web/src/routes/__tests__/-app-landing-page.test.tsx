@@ -3,20 +3,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AppLandingPage } from '../-app-landing-page';
 
 const mocks = vi.hoisted(() => ({
-  effectiveTheme: 'light' as 'light' | 'dark',
   appStoreUrl: '',
   googlePlayUrl: '',
 }));
 
-// AppLandingPage reads useTheme() for the ledger tokens; the mock pins the
-// resolved theme without needing ThemeProvider or matchMedia.
-vi.mock('@/hooks', () => ({
-  useTheme: () => ({
-    theme: mocks.effectiveTheme,
-    effectiveTheme: mocks.effectiveTheme,
-    setTheme: () => {},
-  }),
-}));
+// Ledger tokens are CSS custom-property references (no useTheme, no
+// bake-light-then-flip), so no theme mock is needed here.
 
 // Store URLs are launch-time config; the mock flips the page between its
 // pre-launch (coming soon) and launched (store links) states.
@@ -64,8 +56,7 @@ describe('app landing page', () => {
     expect(screen.queryByText('Coming soon to the App Store and Google Play.')).toBeNull();
   });
 
-  it('cross-links back to the self-hosted web landing and stays dark-theme clean', () => {
-    mocks.effectiveTheme = 'dark';
+  it('cross-links back to the self-hosted web landing and keeps its sample ledger', () => {
     render(<AppLandingPage />);
     expect(screen.getAllByRole('link', { name: /Prefer to run it yourself/i })[0]).toHaveAttribute(
       'href',

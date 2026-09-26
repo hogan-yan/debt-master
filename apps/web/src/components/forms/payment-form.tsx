@@ -121,15 +121,14 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({
     }
   }, [form.state.currentColleagueId, form.state.paymentMode]);
 
-  // Submission handler with validation
+  // Submission handler with validation — the page owning `onSubmit` handles
+  // toasts, modal close, and data refresh on success/failure.
   const { isSubmitting, validateAndSubmit } = usePaymentSubmission({
     formState: form.state,
     selectedExpenseIds: expenseSelection.selectedIds,
     expenseAmounts: expenseSelection.amounts,
     totalAmount: expenseSelection.totalAmount,
-    paymentId: initialData?.paymentId,
     onSubmit,
-    onSuccess: onClose,
   });
 
   const handleColleagueChange = (colleagueId: string): void => {

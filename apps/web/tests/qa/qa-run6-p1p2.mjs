@@ -9,7 +9,7 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 
 const BASE = 'http://localhost:3000';
 const ADMIN = { email: 'qa-admin@test.local', password: 'Str0ng!QaPass!2026' };
-const CODE = 'JUDebt123!~';
+const CODE = process.env.QA_ACCESS_CODE ?? 'JUDebt123!~';
 const SHOTS = '/tmp/qa-shots';
 mkdirSync(SHOTS, { recursive: true });
 const results = [];

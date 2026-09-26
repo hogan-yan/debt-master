@@ -3,6 +3,8 @@
  * Manages form field state for payment recording (both prepayment and expense payment modes)
  */
 
+import { todayLocalDateOnly } from '@/utils/ledger-date';
+
 export type PaymentMode = 'PREPAYMENT' | 'EXPENSE_PAYMENT';
 export type PaymentMethod = 'PAYME' | 'FPS' | 'CASH' | 'OTHER';
 
@@ -33,7 +35,7 @@ type PaymentFormAction =
   | { type: 'RESET_FORM'; initialValues?: Partial<PaymentFormState> | undefined };
 
 function getTodayDate(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayLocalDateOnly();
 }
 
 export function getInitialPaymentFormState(

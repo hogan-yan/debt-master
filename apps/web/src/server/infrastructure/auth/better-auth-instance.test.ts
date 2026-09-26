@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/server/infrastructure/prisma', () => ({
   prisma: {},
@@ -111,6 +111,85 @@ describe('buildBetterAuthConfig', () => {
     expect(args.to).toBe('admin@example.com');
     expect(args.subject).toContain('Verify');
     expect(args.html).toContain('token=xyz');
+  });
+});
+
+describe('buildBetterAuthConfig env-gated surfaces', () => {
+  const savedNodeEnv = process.env.NODE_ENV;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    delete process.env.ENABLE_2FA;
+    delete process.env.ENABLE_EMAIL_VERIFICATION;
+    delete process.env.VALKEY_URL;
+    delete process.env.VALKEY_HOST;
+    delete process.env.CACHE_PROVIDER;
+    delete process.env.BETTER_AUTH_TRUSTED_PROXIES;
+  });
+
+  afterEach(() => {
+    process.env.NODE_ENV = savedNodeEnv;
+    delete process.env.VALKEY_URL;
+    delete process.env.VALKEY_HOST;
+    delete process.env.CACHE_PROVIDER;
+    delete process.env.BETTER_AUTH_TRUSTED_PROXIES;
+  });
+
+  it('wires the Valkey storage into rateLimit.customStorage when Valkey env is set', () => {
+    process.env.VALKEY_URL = 'valkey://localhost:6379';
+    const config = buildBetterAuthConfig();
+    expect(config.rateLimit).toEqual({
+      enabled: true,
+      window: 60,
+      max: 10,
+      customStorage: expect.any(Object),
+    });
+  });
+
+  it('omits rateLimit.customStorage entirely when no Valkey is configured', () => {
+    const config = buildBetterAuthConfig();
+    expect(config.rateLimit).toEqual({ enabled: true, window: 60, max: 10 });
+    expect(config.rateLimit).not.toHaveProperty('customStorage');
+  });
+
+  it('builds the storage when only CACHE_PROVIDER selects valkey', () => {
+    process.env.CACHE_PROVIDER = 'valkey';
+    const config = buildBetterAuthConfig();
+    expect(config.rateLimit).toHaveProperty('customStorage');
+  });
+
+  it('trusts a single BETTER_AUTH_TRUSTED_PROXIES entry', () => {
+    process.env.BETTER_AUTH_TRUSTED_PROXIES = '10.42.0.0/16';
+    const config = buildBetterAuthConfig();
+    expect(config.advanced.ipAddress?.trustedProxies).toEqual(['10.42.0.0/16']);
+  });
+
+  it('parses comma-separated trusted proxies and trims each entry', () => {
+    process.env.BETTER_AUTH_TRUSTED_PROXIES = ' 10.42.0.0/16 , 10.0.0.1,  172.16.0.0/12  ';
+    const config = buildBetterAuthConfig();
+    expect(config.advanced.ipAddress?.trustedProxies).toEqual([
+      '10.42.0.0/16',
+      '10.0.0.1',
+      '172.16.0.0/12',
+    ]);
+  });
+
+  it('drops trustedProxies entirely for empty or whitespace-only values', () => {
+    process.env.BETTER_AUTH_TRUSTED_PROXIES = '   ';
+    const config = buildBetterAuthConfig();
+    expect(config.advanced).toEqual({ useSecureCookies: false });
+    expect(config.advanced).not.toHaveProperty('ipAddress');
+
+    process.env.BETTER_AUTH_TRUSTED_PROXIES = '';
+    expect(buildBetterAuthConfig().advanced).not.toHaveProperty('ipAddress');
+  });
+
+  it('keeps useSecureCookies production-gated', () => {
+    expect(buildBetterAuthConfig().advanced.useSecureCookies).toBe(false);
+    process.env.NODE_ENV = 'production';
+    expect(buildBetterAuthConfig().advanced.useSecureCookies).toBe(true);
+    process.env.NODE_ENV = 'development';
+    expect(buildBetterAuthConfig().advanced.useSecureCookies).toBe(false);
   });
 });
 

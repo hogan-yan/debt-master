@@ -47,10 +47,13 @@ export const clearOAuthParams = () => {
 /**
  * Validate that a redirect URL is safe (same-origin relative path only).
  * Rejects absolute URLs, protocol-relative URLs, and URLs with embedded auth.
+ * Also rejects a backslash after the leading slash: browsers treat `\` as `/`
+ * for special schemes, so `/\evil.com` navigates to `evil.com`.
  */
 export function isSafeRedirectUrl(url: string): boolean {
   if (!url.startsWith('/')) return false;
   if (url.startsWith('//')) return false;
+  if (url.length > 1 && (url[1] === '/' || url[1] === '\\')) return false;
   if (url.includes('\0')) return false;
   return true;
 }

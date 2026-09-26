@@ -22,6 +22,7 @@ interface TurnstileRenderParams {
   'timeout-callback'?: () => void;
   theme?: 'light' | 'dark' | 'auto';
   size?: 'normal' | 'flexible' | 'compact' | 'invisible';
+  appearance?: 'always' | 'execute' | 'interaction-only';
 }
 
 interface TurnstileWidgetProps {
@@ -140,6 +141,7 @@ export function TurnstileWidget({
     }
 
     try {
+      const isHeadlessMode = size === 'invisible';
       const widgetId = window.turnstile.render(containerRef.current, {
         sitekey: siteKey,
         callback: (token: string) => {
@@ -159,7 +161,10 @@ export function TurnstileWidget({
           onTimeout?.();
         },
         theme,
-        size,
+        size: isHeadlessMode ? 'normal' : size,
+        // "invisible" is not a Turnstile size — the intended headless mode is
+        // the normal-size widget that only appears during interaction.
+        appearance: isHeadlessMode ? 'interaction-only' : undefined,
       });
 
       if (widgetId) {

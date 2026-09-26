@@ -12,7 +12,7 @@ import { writeFileSync } from 'node:fs';
 const BASE = 'http://localhost:3000';
 const ADMIN = { email: 'qa-admin@test.local', password: 'Str0ng!QaPass!2026' };
 const CODE_BOUND = 'admin123'; // will bind to colleague 1 via DB
-const CODE_FREE = 'JUDebt123!~';
+const CODE_FREE = process.env.QA_ACCESS_CODE ?? 'JUDebt123!~';
 const results = [];
 const t = (id) => `[data-testid="${id}"]`;
 

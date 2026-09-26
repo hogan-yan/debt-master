@@ -92,7 +92,7 @@ describe('getExpensesPaginated', () => {
   });
 
   it('returns paginated data for authenticated user', async () => {
-    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1 } as never);
+    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1, isAdmin: true } as never);
     vi.mocked(prisma.expense.count).mockResolvedValue(2);
     vi.mocked(prisma.expense.findMany).mockResolvedValue([
       {
@@ -119,7 +119,7 @@ describe('getExpensesPaginated', () => {
   });
 
   it('applies search filter', async () => {
-    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1 } as never);
+    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1, isAdmin: true } as never);
     vi.mocked(prisma.expense.count).mockResolvedValue(1);
     vi.mocked(prisma.expense.findMany).mockResolvedValue([
       {
@@ -144,7 +144,7 @@ describe('getExpensesPaginated', () => {
   });
 
   it('filters by payment status via lightweight participant rows', async () => {
-    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1 } as never);
+    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1, isAdmin: true } as never);
     // per-participant status rows: id 1 fully paid, id 2 not paid
     vi.mocked(prisma.expenseParticipant.findMany).mockResolvedValue([
       {
@@ -201,7 +201,7 @@ describe('getExpenseStats', () => {
   });
 
   it('computes stats from the database (stats are no longer cached)', async () => {
-    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1 } as never);
+    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1, isAdmin: true } as never);
     vi.mocked(prisma.expense.count).mockResolvedValue(5);
     vi.mocked(prisma.expense.aggregate).mockResolvedValue({
       _sum: { amount: new Prisma.Decimal('300') },
@@ -356,7 +356,7 @@ describe('getUnpaidExpensesForColleague', () => {
   });
 
   it('returns unpaid expenses for authenticated user', async () => {
-    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1 } as never);
+    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1, isAdmin: true } as never);
     vi.mocked(prisma.expenseParticipant.findMany).mockResolvedValue([
       {
         expense: {
@@ -435,7 +435,7 @@ describe('getPendingClaimsForExpense', () => {
   });
 
   it('returns pending claims for authenticated user', async () => {
-    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1 } as never);
+    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1, isAdmin: true } as never);
     vi.mocked(prisma.payment.findMany).mockResolvedValue([
       {
         id: 1,
@@ -466,8 +466,17 @@ describe('getPendingPaymentClaims', () => {
     expect(result).toEqual([]);
   });
 
-  it('returns all pending claims for authenticated user', async () => {
-    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1 } as never);
+  it('returns empty array for authenticated non-admins (server-side admin gate)', async () => {
+    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1, isAdmin: false } as never);
+
+    const result = await (getPendingPaymentClaims as ServerFn)({ data: {} });
+
+    expect(result).toEqual([]);
+    expect(prisma.payment.findMany).not.toHaveBeenCalled();
+  });
+
+  it('returns all pending claims for admins', async () => {
+    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1, isAdmin: true } as never);
     vi.mocked(prisma.payment.findMany).mockResolvedValue([
       {
         id: 1,
@@ -528,7 +537,7 @@ describe('filterExpensesByPaymentStatus', () => {
 
 describe('getExpensesPaginated additional branches', () => {
   it('filters by colleagueIds', async () => {
-    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1 } as never);
+    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1, isAdmin: true } as never);
     vi.mocked(prisma.expense.count).mockResolvedValue(1);
     vi.mocked(prisma.expense.findMany).mockResolvedValue([
       {
@@ -556,7 +565,7 @@ describe('getExpensesPaginated additional branches', () => {
   });
 
   it('sorts by restaurant', async () => {
-    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1 } as never);
+    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1, isAdmin: true } as never);
     vi.mocked(prisma.expense.count).mockResolvedValue(0);
     vi.mocked(prisma.expense.findMany).mockResolvedValue([]);
 
@@ -572,7 +581,7 @@ describe('getExpensesPaginated additional branches', () => {
   });
 
   it('sorts by amount', async () => {
-    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1 } as never);
+    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1, isAdmin: true } as never);
     vi.mocked(prisma.expense.count).mockResolvedValue(0);
     vi.mocked(prisma.expense.findMany).mockResolvedValue([]);
 
@@ -588,7 +597,7 @@ describe('getExpensesPaginated additional branches', () => {
   });
 
   it('throws infrastructure error on unexpected exception', async () => {
-    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1 } as never);
+    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1, isAdmin: true } as never);
     vi.mocked(prisma.expense.count).mockRejectedValue(new Error('db fail'));
 
     await expect(
@@ -624,7 +633,7 @@ describe('getExpensePaymentProofUrl additional branches', () => {
 
 describe('getUnpaidExpensesForColleague error branch', () => {
   it('returns default object on error', async () => {
-    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1 } as never);
+    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1, isAdmin: true } as never);
     vi.mocked(prisma.expenseParticipant.findMany).mockRejectedValue(new Error('db fail'));
 
     await expect(
@@ -646,7 +655,7 @@ describe('checkParticipantPendingStatus error branch', () => {
 
 describe('getPendingClaimsForExpense error branch', () => {
   it('throws infrastructure error on unexpected exception', async () => {
-    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1 } as never);
+    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1, isAdmin: true } as never);
     vi.mocked(prisma.payment.findMany).mockRejectedValue(new Error('db fail'));
 
     await expect(
@@ -688,7 +697,7 @@ describe('filterExpensesByPaymentStatus additional branches', () => {
 
 describe('getExpensesPaginated sortBy branches', () => {
   it('sorts by date', async () => {
-    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1 } as never);
+    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1, isAdmin: true } as never);
     vi.mocked(prisma.expense.count).mockResolvedValue(0);
     vi.mocked(prisma.expense.findMany).mockResolvedValue([]);
 
@@ -704,7 +713,7 @@ describe('getExpensesPaginated sortBy branches', () => {
   });
 
   it('sorts by splitType', async () => {
-    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1 } as never);
+    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1, isAdmin: true } as never);
     vi.mocked(prisma.expense.count).mockResolvedValue(0);
     vi.mocked(prisma.expense.findMany).mockResolvedValue([]);
 
@@ -720,7 +729,7 @@ describe('getExpensesPaginated sortBy branches', () => {
   });
 
   it('sorts by createdAt', async () => {
-    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1 } as never);
+    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1, isAdmin: true } as never);
     vi.mocked(prisma.expense.count).mockResolvedValue(0);
     vi.mocked(prisma.expense.findMany).mockResolvedValue([]);
 
@@ -738,7 +747,7 @@ describe('getExpensesPaginated sortBy branches', () => {
 
 describe('getExpensesPaginated paymentStatus partial', () => {
   it('filters by partial payment status with mixed participants', async () => {
-    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1 } as never);
+    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1, isAdmin: true } as never);
     // per-participant rows: expense 1 mixed, expense 2 fully paid, expense 3 unpaid
     vi.mocked(prisma.expenseParticipant.findMany).mockResolvedValue([
       {
@@ -809,7 +818,7 @@ describe('getExpensePaymentProofUrl firstApplication falsy', () => {
 
 describe('getExpenseStats error branches', () => {
   it('throws infrastructure error on generic exception', async () => {
-    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1 } as never);
+    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1, isAdmin: true } as never);
     vi.mocked(prisma.expense.count).mockRejectedValue(new Error('db fail'));
 
     await expect((getExpenseStats as ServerFn)({ data: {} })).rejects.toThrow(
@@ -818,7 +827,7 @@ describe('getExpenseStats error branches', () => {
   });
 
   it('rethrows AppError without wrapping', async () => {
-    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1 } as never);
+    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1, isAdmin: true } as never);
     vi.mocked(prisma.expense.count).mockRejectedValue(
       new AppError(ErrorCode.NOT_FOUND_EXPENSE, 'Expense not found')
     );
@@ -867,7 +876,7 @@ describe('getExpenseReceiptUrl error branches', () => {
 
 describe('getUnpaidExpensesForColleague AppError rethrow', () => {
   it('rethrows AppError without wrapping', async () => {
-    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1 } as never);
+    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1, isAdmin: true } as never);
     vi.mocked(prisma.expenseParticipant.findMany).mockRejectedValue(
       new AppError(ErrorCode.NOT_FOUND_EXPENSE, 'Expense not found')
     );
@@ -880,7 +889,7 @@ describe('getUnpaidExpensesForColleague AppError rethrow', () => {
 
 describe('getUnpaidExpensesForColleague null paymentApplications', () => {
   it('handles null paymentApplications with optional chaining', async () => {
-    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1 } as never);
+    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1, isAdmin: true } as never);
     vi.mocked(prisma.expenseParticipant.findMany).mockResolvedValue([
       {
         expense: {
@@ -907,7 +916,7 @@ describe('getUnpaidExpensesForColleague null paymentApplications', () => {
 
 describe('getUnpaidExpensesForColleague optional relations', () => {
   it('excludes unapproved applications and uses relation fallbacks', async () => {
-    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1 } as never);
+    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1, isAdmin: true } as never);
     vi.mocked(prisma.expenseParticipant.findMany).mockResolvedValue([
       {
         id: 1,
@@ -960,7 +969,7 @@ describe('checkParticipantPendingStatus missing participant', () => {
 
 describe('getPendingPaymentClaims generic error throw', () => {
   it('throws infrastructure error on generic exception', async () => {
-    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1 } as never);
+    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1, isAdmin: true } as never);
     vi.mocked(prisma.payment.findMany).mockRejectedValue(new Error('db connection lost'));
 
     await expect((getPendingPaymentClaims as ServerFn)({ data: {} })).rejects.toThrow(
@@ -971,7 +980,7 @@ describe('getPendingPaymentClaims generic error throw', () => {
 
 describe('getPendingPaymentClaims AppError rethrow', () => {
   it('rethrows AppError without wrapping', async () => {
-    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1 } as never);
+    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1, isAdmin: true } as never);
     vi.mocked(prisma.payment.findMany).mockRejectedValue(
       new AppError(ErrorCode.NOT_FOUND_PAYMENT, 'Payment not found')
     );
@@ -984,7 +993,7 @@ describe('getPendingPaymentClaims AppError rethrow', () => {
 
 describe('getPendingClaimsForExpense optional fields', () => {
   it('uses fallbacks for missing timestamps, proofs, and colleagues', async () => {
-    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1 } as never);
+    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1, isAdmin: true } as never);
     vi.mocked(prisma.payment.findMany).mockResolvedValue([
       {
         id: 1,
@@ -1011,7 +1020,7 @@ describe('getPendingClaimsForExpense optional fields', () => {
 
 describe('getPendingPaymentClaims empty relationships', () => {
   it('skips the participant query and omits absent related entities', async () => {
-    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1 } as never);
+    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1, isAdmin: true } as never);
     vi.mocked(prisma.payment.findMany).mockResolvedValue([
       {
         id: 1,
@@ -1044,7 +1053,7 @@ describe('getPendingPaymentClaims empty relationships', () => {
   });
 
   it('does not query participants when no payments are pending', async () => {
-    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1 } as never);
+    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1, isAdmin: true } as never);
     vi.mocked(prisma.payment.findMany).mockResolvedValue([]);
 
     await expect((getPendingPaymentClaims as ServerFn)({ data: {} })).resolves.toEqual([]);
@@ -1060,7 +1069,7 @@ describe('remaining expense query branches', () => {
   });
 
   it('returns a zero average when the database has no expenses', async () => {
-    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1 } as never);
+    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1, isAdmin: true } as never);
     vi.mocked(prisma.expense.count).mockResolvedValue(0);
     vi.mocked(prisma.expense.aggregate).mockResolvedValue({ _sum: { amount: null } } as never);
     vi.mocked(prisma.expense.groupBy).mockResolvedValue([] as never);
@@ -1074,7 +1083,7 @@ describe('remaining expense query branches', () => {
   });
 
   it('rethrows AppError from paginated expense queries', async () => {
-    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1 } as never);
+    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1, isAdmin: true } as never);
     vi.mocked(prisma.expense.count).mockRejectedValue(
       new AppError(ErrorCode.NOT_FOUND_EXPENSE, 'Expense not found')
     );
@@ -1096,7 +1105,7 @@ describe('remaining expense query branches', () => {
   });
 
   it('rethrows AppError from pending claims by expense queries', async () => {
-    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1 } as never);
+    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1, isAdmin: true } as never);
     vi.mocked(prisma.payment.findMany).mockRejectedValue(
       new AppError(ErrorCode.NOT_FOUND_PAYMENT, 'Payment not found')
     );
@@ -1107,7 +1116,7 @@ describe('remaining expense query branches', () => {
   });
 
   it('omits an expense when its matched participant has none', async () => {
-    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1 } as never);
+    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1, isAdmin: true } as never);
     vi.mocked(prisma.payment.findMany).mockResolvedValue([
       {
         id: 1,
@@ -1137,7 +1146,7 @@ describe('remaining expense query branches', () => {
   });
 
   it('omits participant fields when a pending payment has no matching participant', async () => {
-    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1 } as never);
+    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1, isAdmin: true } as never);
     vi.mocked(prisma.payment.findMany).mockResolvedValue([
       {
         id: 1,
@@ -1161,7 +1170,7 @@ describe('remaining expense query branches', () => {
   });
 
   it('includes an expense from the matched participant', async () => {
-    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1 } as never);
+    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1, isAdmin: true } as never);
     vi.mocked(prisma.payment.findMany).mockResolvedValue([
       {
         id: 1,
@@ -1202,7 +1211,7 @@ describe('remaining expense query branches', () => {
 
 describe('getExpensesPaginated paymentStatus edge branches', () => {
   it('keeps only expenses with zero paid participants for paymentStatus=unpaid', async () => {
-    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1 } as never);
+    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1, isAdmin: true } as never);
     // expense 1 fully paid, expense 2 untouched, expense 3 mixed (one paid
     // participant, one unpaid) so it counts as neither unpaid nor paid
     vi.mocked(prisma.expenseParticipant.findMany).mockResolvedValue([
@@ -1250,7 +1259,7 @@ describe('getExpensesPaginated paymentStatus edge branches', () => {
   });
 
   it('returns an empty page without querying expenses when the page is past the matches', async () => {
-    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1 } as never);
+    vi.mocked(getAuthFromCookie).mockResolvedValue({ id: 1, isAdmin: true } as never);
     vi.mocked(prisma.expenseParticipant.findMany).mockResolvedValue([
       {
         expenseId: 1,

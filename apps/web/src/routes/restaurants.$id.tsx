@@ -20,7 +20,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { StatisticCard } from '@/components/ui/statistic-card';
 import { getCuisineLabel, getCuisineSelectOptions } from '@/lib/schemas';
 import { m } from '@/paraglide/messages';
 import { deleteRestaurant, updateRestaurant } from '@/server/restaurants/restaurant-mutations';
@@ -275,15 +274,21 @@ function RestaurantDetailPage() {
           )}
         </div>
 
+        {/* Page h1 is the restaurant's name; the info card keeps its label. */}
+        <h1 className="text-2xl font-semibold tracking-tight">{restaurant.name}</h1>
+
         {/* Restaurant Info Card */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-3" data-testid={RESTAURANT.DETAILS_HEADING}>
+            <div
+              className="flex items-center gap-3 text-lg font-semibold"
+              data-testid={RESTAURANT.DETAILS_HEADING}
+            >
               <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
                 <UtensilsCrossed className="h-5 w-5 text-primary-foreground" />
               </div>
               {m.restaurant_detail_details()}
-            </CardTitle>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -402,7 +407,7 @@ function RestaurantDetailPage() {
                   <p className="text-muted-foreground">
                     {m.restaurant_detail_stat_totalExpenses()}
                   </p>
-                  <p className="font-medium">
+                  <p className="font-medium" data-testid={RESTAURANT_DETAIL.TOTAL_EXPENSES_KPI}>
                     {totalExpenses}{' '}
                     {totalExpenses !== 1
                       ? m.restaurant_detail_expenses()
@@ -411,30 +416,14 @@ function RestaurantDetailPage() {
                 </div>
                 <div>
                   <p className="text-muted-foreground">{m.restaurant_detail_stat_totalSpent()}</p>
-                  <p className="font-medium">{formatCurrency(totalAmount)}</p>
+                  <p className="font-medium" data-testid={RESTAURANT_DETAIL.TOTAL_AMOUNT_SPENT_KPI}>
+                    {formatCurrency(totalAmount)}
+                  </p>
                 </div>
               </div>
             </div>
           </CardContent>
         </Card>
-
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <StatisticCard
-            title={m.restaurant_detail_stat_totalExpenses()}
-            value={String(totalExpenses)}
-            data-testid={RESTAURANT_DETAIL.TOTAL_EXPENSES_KPI}
-            description={m.restaurant_detail_atThisRestaurant()}
-            icon={<Receipt className="h-4 w-4" />}
-          />
-          <StatisticCard
-            title={m.restaurant_summary_totalAmount()}
-            value={formatCurrency(totalAmount)}
-            data-testid={RESTAURANT_DETAIL.TOTAL_AMOUNT_SPENT_KPI}
-            description={m.restaurant_detail_acrossExpenses({ count: totalExpenses })}
-            icon={<UtensilsCrossed className="h-4 w-4" />}
-          />
-        </div>
 
         {/* Recent Expenses */}
         <Card>

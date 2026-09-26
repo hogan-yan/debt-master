@@ -1,7 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
-import { useEffect, useState } from 'react';
 import { TornEdge } from '@/components/landing/torn-edge';
-import { useTheme } from '@/hooks';
 import { m } from '@/paraglide/messages';
 import { APP_URL } from '@/utils/app-url';
 import { APP_STORE_URL, GOOGLE_PLAY_URL } from '@/utils/store-urls';
@@ -18,38 +16,23 @@ import { APP_STORE_URL, GOOGLE_PLAY_URL } from '@/utils/store-urls';
  * CTA renders an honest coming-soon line instead of dead badges until then.
  */
 
-// Same locked app.css tokens as the / landing (both themes; the canvases
-// react to the theme toggle after mount).
-const SCREEN_TOKENS: Record<
-  'light' | 'dark',
-  {
-    surface: string;
-    text: string;
-    muted: string;
-    border: string;
-    danger: string;
-    success: string;
-  }
-> = {
-  light: {
-    surface: 'hsl(0 0% 100%)',
-    text: 'hsl(222.2 84% 4.9%)',
-    muted: 'hsl(215.4 16.3% 42%)',
-    border: 'hsl(214.3 31.8% 91.4%)',
-    danger: 'hsl(0 76% 46%)',
-    success: 'hsl(150 60% 32%)',
-  },
-  dark: {
-    surface: 'hsl(0 0% 8%)',
-    text: 'hsl(0 0% 88%)',
-    muted: 'hsl(0 0% 59%)',
-    border: 'hsl(0 0% 19%)',
-    danger: 'hsl(0 85% 70%)',
-    success: 'hsl(150 60% 55%)',
-  },
-};
+// Same locked app.css tokens as the / landing, referenced as CSS custom
+// properties instead of baked per-theme literals: the pre-paint theme script
+// sets .dark/.light on <html> before first paint, so SSR and the first
+// client render are already in the visitor's theme (no bake-light-then-flip,
+// no refresh flash). Danger/success use the text roles (--destructive-text /
+// --success) — every color here is text or a pill border, and those are the
+// AA-correct values.
+const SCREEN_TOKENS = {
+  surface: 'hsl(var(--background))',
+  text: 'hsl(var(--foreground))',
+  muted: 'hsl(var(--muted-foreground))',
+  border: 'hsl(var(--border))',
+  danger: 'hsl(var(--destructive-text))',
+  success: 'hsl(var(--success))',
+} as const;
 
-type Tokens = (typeof SCREEN_TOKENS)['light'];
+type Tokens = typeof SCREEN_TOKENS;
 
 const STRIP = [
   () => m.app_landing_strip1(),
@@ -130,8 +113,10 @@ function buildAppJsonLd(): string {
  */
 function StoreCta(props: { readonly className?: string }) {
   if (!APP_STORE_URL && !GOOGLE_PLAY_URL) {
+    // gray-600/gray-400 keeps 4.5:1 on the hero's white and near-black
+    // backgrounds respectively (ux-audit 2026-09-14 color-contrast).
     return (
-      <p className={`text-sm text-muted-foreground ${props.className ?? ''}`}>
+      <p className={`text-sm text-gray-600 dark:text-gray-400 ${props.className ?? ''}`}>
         {m.app_landing_coming_soon()}
       </p>
     );
@@ -275,13 +260,7 @@ function FeatureSection(props: {
 }
 
 export function AppLandingPage() {
-  const { effectiveTheme } = useTheme();
-  // Same hydration dance as /: SSR and first client render bake light
-  // tokens; after mount the theme flips and the changed style props patch
-  // the DOM in place.
-  const [isMounted, setIsMounted] = useState(false);
-  useEffect(() => setIsMounted(true), []);
-  const tokens = SCREEN_TOKENS[isMounted ? effectiveTheme : 'light'];
+  const tokens = SCREEN_TOKENS;
 
   return (
     <div className="max-w-5xl mx-auto" data-testid="app-landing-page">
@@ -495,7 +474,7 @@ export function AppLandingPage() {
             >
               {m.landing_cta_title()}
             </h2>
-            <StoreCta className="mt-8 justify-center" />
+            <StoreCta className="mt-8 justify-center text-gray-400!" />
             <a
               href="/"
               className="mt-6 block text-sm text-[hsl(0_0%_55%)] underline-offset-4 hover:text-[hsl(0_0%_88%)] hover:underline focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-sm"

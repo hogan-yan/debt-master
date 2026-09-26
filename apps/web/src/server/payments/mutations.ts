@@ -166,18 +166,13 @@ export const createPayment = createServerFn({ method: 'POST' })
         logger.info(`Cleaned up proof for canceled claim: payment ${proof.paymentId}`);
       }
 
-      // Serialize applications (convert Prisma.Decimal to number)
-      const serializedApplications = (workflowResult.payment.applications || []).map((app) => ({
-        ...app,
-        amount:
-          app.amount instanceof Prisma.Decimal
-            ? serializeDecimal(app.amount)
-            : typeof app.amount === 'number'
-              ? app.amount
-              : Number.parseFloat(String(app.amount)),
-      }));
-
       // Serialize autoPayments (convert Prisma.Decimal to number)
+      // NOTE: `applications` needs no separate mapping here —
+      // serializePayment already converts each application's amount AND its
+      // included expense.amount. The previous redundant re-map spread the raw
+      // expense relation back in, leaking an unserializable Prisma.Decimal
+      // into the server-fn response → Seroval 500 AFTER the payment had
+      // committed (money moved, client saw a failure).
       const serializedAutoPayments = (workflowResult.autoPayments || []).map((app) => ({
         ...app,
         amount:
@@ -196,7 +191,6 @@ export const createPayment = createServerFn({ method: 'POST' })
 
       return {
         ...serializePayment(workflowResult.payment),
-        applications: serializedApplications,
         totalApplied: workflowResult.totalAppliedAmount,
         remainingBalance: workflowResult.remainingAmount,
         autoPayments: serializedAutoPayments,
@@ -204,6 +198,15 @@ export const createPayment = createServerFn({ method: 'POST' })
         remainingPrepayment: workflowResult.remainingAmount,
       };
     } catch (error) {
+      // The transaction has usually COMMITTED by the time anything here
+      // throws (serialization, storage cleanup). Log the real cause — a
+      // bare 500 with no stack made an incident undiscoverable.
+      logger.error('createPayment failed', {
+        error: String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        colleagueId: data.colleagueId,
+        amount: data.amount,
+      });
       if (isAppError(error)) throw error;
       throw new AppError(
         ErrorCode.INFRASTRUCTURE_ERROR,

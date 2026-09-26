@@ -1,30 +1,32 @@
 /**
  * Server-only rate limiting for access-code validation.
  *
- * Split out of `auth-server-utils.ts` because it depends on TanStack Start's
- * `getRequestIP`, which transitively pulls `@tanstack/start-server-core` and its
+ * Split out of `auth-server-utils.ts` because it depends on request-context
+ * primitives (`@tanstack/start-server-core`), which transitively pull in a
  * top-level `new AsyncLocalStorage()` (node:async_hooks). `auth-server-utils.ts`
  * exports JWT helpers (`verifyToken`) that are reachable from the CLIENT bundle
- * via plain re-exports in `@/server/auth`; keeping `getRequestIP` there crashed
- * the browser with "node:async_hooks has been externalized". This file is
- * `.server.ts` and is only imported via a dynamic `import()` inside server-fn
- * handlers, so it never enters the client graph.
+ * via plain re-exports in `@/server/auth`; keeping request access there crashed
+ * the browser with "node:async_hooks has been externalized". This file is only
+ * imported via a dynamic `import()` inside server-fn handlers, so it never
+ * enters the client graph.
  */
 
+import { getRequestClientIp } from '../network';
 import { hashIdentifier, RATE_LIMIT } from './auth-server-utils';
 import { checkSharedRateLimit } from './rate-limit-store';
 
 /**
- * Get client IP from request context using TanStack Start's getRequestIP.
- * Falls back to 'unknown' if IP cannot be determined.
+ * Identify the rate-limit subject for the current request.
+ *
+ * Uses the rightmost-trusted-XFF resolver (`getRequestClientIp`) rather than
+ * the raw socket peer: behind the k8s ingress every request shares one peer
+ * address, so a socket-IP key collapses the per-IP buckets into a single
+ * cluster-wide bucket (one attacker can lock out every user's login).
+ * Falls back to 'unknown' when no IP can be resolved.
  */
 export async function getClientIdentifier(): Promise<string> {
   try {
-    // Server-only primitive (node:async_hooks) — lazy import keeps this module
-    // safe to dynamic-import anywhere on the server.
-    const { getRequestIP } = await import('@tanstack/start-server-core');
-    const ip = await getRequestIP();
-    return ip ?? 'unknown';
+    return (await getRequestClientIp()) ?? 'unknown';
   } catch {
     return 'unknown';
   }

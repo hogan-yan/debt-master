@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mockGetRequestIP = vi.fn();
+const mockGetRequestClientIp = vi.fn();
 const mockCheckRateLimit = vi.fn();
 const mockHashIdentifier = vi.fn();
 
-vi.mock('@tanstack/start-server-core', () => ({
-  getRequestIP: () => mockGetRequestIP(),
+vi.mock('../network', () => ({
+  getRequestClientIp: () => mockGetRequestClientIp(),
 }));
 
 vi.mock('./auth-server-utils', () => ({
@@ -27,24 +27,24 @@ describe('getClientIdentifier', () => {
     vi.clearAllMocks();
   });
 
-  it('returns IP from getRequestIP', async () => {
-    mockGetRequestIP.mockReturnValue('192.168.1.1');
+  it('returns the client IP from getRequestClientIp', async () => {
+    mockGetRequestClientIp.mockResolvedValue('192.168.1.1');
 
     const result = await getClientIdentifier();
 
     expect(result).toBe('192.168.1.1');
   });
 
-  it('returns "unknown" when getRequestIP returns null', async () => {
-    mockGetRequestIP.mockReturnValue(null);
+  it('returns "unknown" when no client IP can be resolved', async () => {
+    mockGetRequestClientIp.mockResolvedValue(null);
 
     const result = await getClientIdentifier();
 
     expect(result).toBe('unknown');
   });
 
-  it('returns "unknown" when getRequestIP throws', async () => {
-    mockGetRequestIP.mockImplementation(() => {
+  it('returns "unknown" when resolving the client IP throws', async () => {
+    mockGetRequestClientIp.mockImplementation(() => {
       throw new Error('No request context');
     });
 
@@ -77,7 +77,7 @@ describe('checkAccessCodeRateLimit', () => {
 
   it('checks the per-IP bucket first, then the per-code bucket', async () => {
     mockHashIdentifier.mockReturnValue('hashed_code');
-    mockGetRequestIP.mockReturnValue('10.0.0.1');
+    mockGetRequestClientIp.mockResolvedValue('10.0.0.1');
     mockCheckRateLimit
       .mockReturnValueOnce({ allowed: true, remainingAttempts: 19 })
       .mockReturnValueOnce({ allowed: true, remainingAttempts: 4 });
@@ -100,7 +100,7 @@ describe('checkAccessCodeRateLimit', () => {
 
   it('blocks code enumeration: a burnt IP never reaches the per-code bucket', async () => {
     mockHashIdentifier.mockReturnValue('hashed');
-    mockGetRequestIP.mockReturnValue('10.0.0.1');
+    mockGetRequestClientIp.mockResolvedValue('10.0.0.1');
     mockCheckRateLimit.mockReturnValue({
       allowed: false,
       remainingAttempts: 0,
@@ -115,7 +115,7 @@ describe('checkAccessCodeRateLimit', () => {
 
   it('returns the blocked result from the per-code bucket when the IP is fine', async () => {
     mockHashIdentifier.mockReturnValue('hashed');
-    mockGetRequestIP.mockReturnValue('10.0.0.1');
+    mockGetRequestClientIp.mockResolvedValue('10.0.0.1');
     mockCheckRateLimit
       .mockReturnValueOnce({ allowed: true, remainingAttempts: 19 })
       .mockReturnValueOnce({

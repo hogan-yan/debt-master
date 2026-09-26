@@ -1,6 +1,7 @@
 import { m } from '@/paraglide/messages';
 import { getLocale } from '@/paraglide/runtime';
 import type { ExpenseParticipantWithColleague } from '@/types';
+import { calendarDaysFromToday, parseLedgerDate } from '@/utils/ledger-date';
 
 const LOCALE_MAP: Record<string, string> = {
   en: 'en-US',
@@ -131,13 +132,12 @@ export const getDateBadgeInfo = (
   variant: 'today' | 'yesterday' | 'thisWeek' | 'recent' | 'old';
   icon?: string;
 } => {
-  const date = new Date(dateString);
+  const date = parseLedgerDate(dateString);
   const now = new Date();
   const locale = intlLocale();
 
-  // Calculate days difference
-  const diffTime = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  // Calendar-day difference in the viewer's timezone (today → 0).
+  const diffDays = calendarDaysFromToday(date);
 
   const currentYear = now.getFullYear();
   const dateYear = date.getFullYear();
@@ -192,13 +192,12 @@ export const getDateBadgeInfo = (
  * Examples: "Today (May 30)", "3 days ago (May 27)", "Dec 18"
  */
 export const formatDateWithRelative = (dateString: string): string => {
-  const date = new Date(dateString);
+  const date = parseLedgerDate(dateString);
   const now = new Date();
   const locale = intlLocale();
 
-  // Calculate days difference
-  const diffTime = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  // Calendar-day difference in the viewer's timezone (today → 0).
+  const diffDays = calendarDaysFromToday(date);
 
   const currentYear = now.getFullYear();
   const dateYear = date.getFullYear();

@@ -1,18 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { config, verifyToken, detectMimeType, readLocalFile, getSession } = vi.hoisted(() => ({
-  config: { storageProvider: 'localfs' as string, authProvider: 'authentik' as string },
-  verifyToken: vi.fn(),
-  detectMimeType: vi.fn(),
-  readLocalFile: vi.fn(),
-  getSession: vi.fn(),
-}));
+const { config, verifyToken, detectMimeType, readLocalFile, getSession, isAccessCodeActive } =
+  vi.hoisted(() => ({
+    config: { storageProvider: 'localfs' as string, authProvider: 'authentik' as string },
+    verifyToken: vi.fn(),
+    detectMimeType: vi.fn(),
+    readLocalFile: vi.fn(),
+    getSession: vi.fn(),
+    isAccessCodeActive: vi.fn(),
+  }));
 
 vi.mock('../config', () => ({ infraConfig: config }));
 vi.mock('@/server/infrastructure/auth/auth-server-utils', () => ({
   verifyToken,
   getJwtSecret: () => 'test-secret-for-storage-signing-0123456789',
 }));
+vi.mock('@/server/infrastructure/auth/access-code-status', () => ({ isAccessCodeActive }));
 vi.mock('@/server/utils/file-validation', () => ({ detectMimeType }));
 vi.mock('./localfs-adapter', () => ({ readLocalFile }));
 vi.mock('@/server/infrastructure/auth/better-auth-instance', () => {
@@ -27,7 +30,7 @@ vi.hoisted(() => {
 });
 
 import { serveStoredObject } from './localfs-serve';
-import { signStoragePath } from './storage-signing';
+import { STORAGE_URL_TTL_SECONDS, signStoragePath } from './storage-signing';
 
 function storageRequest(pathSuffix: string, cookie?: string): Request {
   const headers = new Headers();
@@ -53,6 +56,7 @@ describe('serveStoredObject', () => {
     detectMimeType.mockReturnValue('image/png');
     readLocalFile.mockResolvedValue(Buffer.from('img-bytes'));
     getSession.mockResolvedValue(null);
+    isAccessCodeActive.mockResolvedValue(true);
   });
 
   it('returns 404 when the provider is not localfs', async () => {
@@ -129,6 +133,19 @@ describe('serveStoredObject', () => {
     expect(res.status).toBe(401);
   });
 
+  it('returns 401 when the JWT belongs to a deactivated access code', async () => {
+    verifyToken.mockResolvedValue({ isAdmin: false, permissions: ['view'], accessCodeId: 7 });
+    isAccessCodeActive.mockResolvedValue(false);
+
+    const res = await serveStoredObject(
+      storageRequest(signedPath('debt-master/receipts/x.png'), 'debt-master-auth=some.jwt.token')
+    );
+
+    expect(isAccessCodeActive).toHaveBeenCalledWith(7);
+    expect(res.status).toBe(401);
+    expect(readLocalFile).not.toHaveBeenCalled();
+  });
+
   it('serves the file with a detected Content-Type for a valid session and signature', async () => {
     verifyToken.mockResolvedValue({ isAdmin: false, permissions: ['view'] });
     const res = await serveStoredObject(
@@ -139,7 +156,10 @@ describe('serveStoredObject', () => {
     expect(readLocalFile).toHaveBeenCalledWith('debt-master', 'receipts/x.png');
     expect(res.status).toBe(200);
     expect(res.headers.get('Content-Type')).toBe('image/png');
-    expect(res.headers.get('Cache-Control')).toBe('private, max-age=86400');
+    expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
+    // The cached-bytes window must not outlive the signed URL that fetched
+    // them — assert against the TTL constant, not a hardcoded number.
+    expect(res.headers.get('Cache-Control')).toBe(`private, max-age=${STORAGE_URL_TTL_SECONDS}`);
     expect(await res.text()).toBe('img-bytes');
   });
 

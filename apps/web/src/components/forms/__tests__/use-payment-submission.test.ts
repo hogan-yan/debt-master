@@ -21,15 +21,6 @@ vi.mock('@/utils/formatters', () => ({
   formatCurrency: (amount: number) => `$${amount.toFixed(2)}`,
 }));
 
-vi.mock('@/hooks', () => ({
-  useFormSubmission: () => ({
-    isSubmitting: false,
-    handleSubmit: vi.fn(async (fn, _msg) => {
-      await fn();
-    }),
-  }),
-}));
-
 import { toast } from 'sonner';
 
 const baseFormState = {
@@ -61,9 +52,7 @@ function makeParams(overrides: Record<string, unknown> = {}): UsePaymentSubmissi
     selectedExpenseIds: [],
     expenseAmounts: {},
     totalAmount: 0,
-    paymentId: undefined,
     onSubmit: vi.fn().mockResolvedValue(undefined),
-    onSuccess: vi.fn(),
     ...otherOverrides,
   } as UsePaymentSubmissionParams;
 }
@@ -355,5 +344,51 @@ describe('usePaymentSubmission', () => {
 
     expect(toast.error).not.toHaveBeenCalled();
     expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports an error toast and stays resolved when onSubmit rejects', async () => {
+    // Regression: the old nested-useFormSubmission version showed a SUCCESS
+    // toast when the page handler swallowed a server failure, closing the
+    // dialog over a failed payment.
+    const onSubmit = vi.fn().mockRejectedValue(new Error('INFRASTRUCTURE_ERROR'));
+    const params = makeParams({ onSubmit });
+    const { result } = renderHook(() => usePaymentSubmission(params));
+
+    await act(async () => {
+      await result.current.validateAndSubmit({
+        preventDefault: vi.fn(),
+      } as unknown as React.FormEvent);
+    });
+
+    expect(toast.error).toHaveBeenCalledWith(
+      'payment_form_errorTitle',
+      expect.objectContaining({ description: 'INFRASTRUCTURE_ERROR' })
+    );
+    expect(result.current.isSubmitting).toBe(false);
+  });
+
+  it('flips isSubmitting while onSubmit is in flight', async () => {
+    let resolveSubmit: () => void = () => {};
+    const onSubmit = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveSubmit = resolve;
+        })
+    );
+    const params = makeParams({ onSubmit });
+    const { result } = renderHook(() => usePaymentSubmission(params));
+
+    let pending: Promise<void> | undefined;
+    act(() => {
+      pending = result.current.validateAndSubmit({
+        preventDefault: vi.fn(),
+      } as unknown as React.FormEvent);
+    });
+    expect(result.current.isSubmitting).toBe(true);
+    await act(async () => {
+      resolveSubmit();
+      await pending;
+    });
+    expect(result.current.isSubmitting).toBe(false);
   });
 });

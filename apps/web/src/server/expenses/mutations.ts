@@ -79,6 +79,58 @@ async function autoApplyPrepaymentsForExpense(expense: ExpenseWithRelations) {
 }
 
 // =============================================================================
+// CLAIM AUTHZ / RATE LIMITING HELPERS
+// =============================================================================
+
+/**
+ * Per-IP throttle for the colleague claim endpoint — the one
+ * colleague-reachable write RPC without better-auth mount coverage. Same
+ * pattern as `checkTwoFactorRateLimit` in `two-factor.ts`.
+ */
+async function checkClaimRateLimit(): Promise<void> {
+  const { getClientIdentifier } = await import('@/server/infrastructure/auth/auth-rate-limit');
+  const { RATE_LIMIT } = await import('@/server/infrastructure/auth/auth-server-utils');
+  const { checkSharedRateLimit } = await import('@/server/infrastructure/auth/rate-limit-store');
+  const result = await checkSharedRateLimit(
+    `claim:${await getClientIdentifier()}`,
+    RATE_LIMIT.CLAIM
+  );
+  if (!result.allowed) {
+    throw new Error('Too many attempts. Please try again later.');
+  }
+}
+
+/**
+ * Bound-code ownership gate for payment claims: the code must be live and
+ * bound to the participant's colleague. Mirrors the storage-authz binding
+ * model (files) for the one relational write colleagues can perform — the
+ * previous "access codes are global" comment predated colleagueId binding.
+ * Admins and Better Auth sessions are unrestricted; unbound codes keep the
+ * legacy policy here (claims still route through the admin approval gate).
+ */
+async function assertParticipantClaimableByCode(
+  accessCodeId: number,
+  participantId: number
+): Promise<void> {
+  const code = await prisma.accessCode.findUnique({
+    where: { id: accessCodeId },
+    select: { colleagueId: true, isActive: true, deletedAt: true },
+  });
+  if (!code?.isActive || code.deletedAt) {
+    throw new AppError(ErrorCode.AUTH_REQUIRED, 'Authentication required');
+  }
+  if (code.colleagueId === null) return;
+
+  const participant = await prisma.expenseParticipant.findUnique({
+    where: { id: participantId },
+    select: { colleagueId: true },
+  });
+  if (!participant || participant.colleagueId !== code.colleagueId) {
+    throw new AppError(ErrorCode.STORAGE_ACCESS_DENIED, 'You can only file claims for yourself');
+  }
+}
+
+// =============================================================================
 // MUTATION FUNCTIONS (CREATE, UPDATE, DELETE OPERATIONS)
 // =============================================================================
 
@@ -271,10 +323,11 @@ export const claimPayment = createServerFn({ method: 'POST' })
       });
   })
   .handler(async ({ data }) => {
-    // Require an authenticated identity: prevents anonymous RPC from filing
-    // pending claims. Ownership is not enforced here because access codes are
-    // global (no colleagueId binding); the admin approval gate contains abuse.
-    await requireAuthFromCookie();
+    const auth = await requireAuthFromCookie();
+    await checkClaimRateLimit();
+    if (!auth.isAdmin && auth.accessCodeId !== undefined) {
+      await assertParticipantClaimableByCode(auth.accessCodeId, data.participantId);
+    }
     try {
       let paymentProofBucket: string | null = null;
       let paymentProofObjectKey: string | null = null;

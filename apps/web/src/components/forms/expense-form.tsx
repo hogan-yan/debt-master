@@ -9,6 +9,7 @@ import { type CreateExpenseSchema, expenseSchema } from '@/lib/schemas';
 import { m } from '@/paraglide/messages';
 import { EXPENSE_FORM, participantCheckboxId } from '@/test/test-ids';
 import { Colleague, Restaurant, SplitType } from '@/types';
+import { todayLocalDateOnly } from '@/utils/ledger-date';
 import { Button } from '../ui/button';
 import { Checkbox } from '../ui/checkbox';
 import { DialogFooter } from '../ui/dialog';
@@ -91,6 +92,9 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
     initialData?.participantIds?.map((id) => id.toString()) ?? []
   );
   const [splitType, setSplitType] = useState<SplitType>(initialData?.splitType ?? 'ITEMIZED');
+  // The "at least one participant" message only makes sense after the user
+  // actually tried to submit — a pristine form shouldn't open with an error.
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   const [addedColleagues, setAddedColleagues] = useState<Colleague[]>([]);
   const allColleagues = useMemo<Colleague[]>(() => {
@@ -131,6 +135,20 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
     [splitType, togglePerson]
   );
 
+  // Switching to EQUAL seeds its checkboxes from the colleagues already
+  // itemized, so a mode toggle doesn't read as "my selection vanished".
+  const handleSplitTypeChange = useCallback(
+    (next: SplitType): void => {
+      if (next === splitType) return;
+      if (next === 'EQUAL' && selectedParticipants.length === 0) {
+        const itemizedIds = personItems.map((person) => person.colleagueId.toString());
+        if (itemizedIds.length > 0) setSelectedParticipants([...new Set(itemizedIds)]);
+      }
+      setSplitType(next);
+    },
+    [splitType, selectedParticipants, personItems]
+  );
+
   const { hasExistingPayments, showPaymentWarning, confirmEdit, paymentImpacts, setConfirmEdit } =
     usePaymentImpact({ isEditing, participants: initialData?.participants });
 
@@ -158,6 +176,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
   }, []);
 
   const handleFormSubmit = async (values: CreateExpenseSchema): Promise<void> => {
+    setSubmitAttempted(true);
     const restaurantId = Number.parseInt(values.restaurantId, 10);
     let participantIds: number[];
     let amount = 0;
@@ -262,7 +281,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
     <>
       <Form<CreateExpenseSchema>
         defaultValues={{
-          date: initialData?.date ?? new Date().toISOString().split('T')[0],
+          date: initialData?.date ?? todayLocalDateOnly(),
           restaurantId: initialData?.restaurantId?.toString() ?? '',
           amount: splitType === 'EQUAL' ? (initialData?.amount?.toString() ?? '') : '',
           splitType: initialData?.splitType ?? 'ITEMIZED',
@@ -270,6 +289,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
           notes: initialData?.notes ?? '',
         }}
         onSubmit={handleFormSubmit}
+        onSubmitAttempt={() => setSubmitAttempted(true)}
         className="space-y-6"
       >
         {/* Payment Warning Section */}
@@ -315,7 +335,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
               />
             )}
 
-            <SplitTypeSelector value={splitType} onChange={setSplitType} />
+            <SplitTypeSelector value={splitType} onChange={handleSplitTypeChange} />
 
             {splitType === 'ITEMIZED' &&
               (allColleagues.length === 0 ? (
@@ -353,7 +373,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
                         </div>
                       ))}
                     </div>
-                    {selectedParticipants.length === 0 && (
+                    {submitAttempted && selectedParticipants.length === 0 && (
                       <p className="text-sm text-destructive-text">
                         {m.expense_form_participantRequired()}
                       </p>

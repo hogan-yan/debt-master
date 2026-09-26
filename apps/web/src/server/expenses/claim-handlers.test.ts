@@ -13,6 +13,23 @@ vi.mock('@/server/infrastructure/auth/auth-cookie', () => ({
   requireAuthFromCookie: vi.fn(),
 }));
 
+// claimPayment now throttles per IP through the shared store — keep the
+// integration tests off the real limiter so repeated runs never exhaust the
+// in-memory budget.
+const mockCheckSharedRateLimit = vi.hoisted(() => vi.fn());
+
+vi.mock('@/server/infrastructure/auth/auth-rate-limit', () => ({
+  getClientIdentifier: () => 'test-ip',
+}));
+
+vi.mock('@/server/infrastructure/auth/auth-server-utils', () => ({
+  RATE_LIMIT: { CLAIM: { maxAttempts: 20, windowMs: 300_000, blockDurationMs: 900_000 } },
+}));
+
+vi.mock('@/server/infrastructure/auth/rate-limit-store', () => ({
+  checkSharedRateLimit: (...args: unknown[]) => mockCheckSharedRateLimit(...args),
+}));
+
 vi.mock('@/server/infrastructure/storage', () => ({
   uploadToMinio: vi.fn().mockResolvedValue({ bucket: 'test-bucket', objectKey: 'test-key' }),
   deleteFromStorage: vi.fn(),
@@ -62,10 +79,12 @@ describe('Claim Handlers (Integration)', () => {
     await prisma.expenseItem.deleteMany();
     await prisma.expenseParticipant.deleteMany();
     await prisma.expense.deleteMany();
+    await prisma.accessCode.deleteMany();
     await prisma.colleague.deleteMany();
     await prisma.restaurant.deleteMany();
 
     vi.resetAllMocks();
+    mockCheckSharedRateLimit.mockResolvedValue({ allowed: true, remainingAttempts: 20 });
   });
 
   const itIfEnabled = process.env.RUN_INTEGRATION_TESTS ? it : it.skip;
@@ -96,6 +115,12 @@ describe('Claim Handlers (Integration)', () => {
     const participant = expense.participants[0];
     if (!participant) throw new Error('Expected participant to exist');
 
+    // The ownership gate requires a live access code bound to the claiming
+    // colleague — create one instead of assuming id 1 exists.
+    const accessCode = await prisma.accessCode.create({
+      data: { code: 'CLAIMTEST', isActive: true, colleagueId: colleague.id },
+    });
+
     // Build FormData
     const formData = new FormData();
     formData.append('participantId', String(participant.id));
@@ -105,7 +130,7 @@ describe('Claim Handlers (Integration)', () => {
     vi.mocked(requireAuthFromCookie).mockResolvedValue({
       isAdmin: false,
       permissions: ['view'],
-      accessCodeId: 1,
+      accessCodeId: accessCode.id,
     });
 
     // Call handler

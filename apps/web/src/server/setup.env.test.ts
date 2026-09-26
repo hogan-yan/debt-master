@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
- * The SETUP_TOKEN warning lives at module scope, so it runs once at import
- * time under whatever NODE_ENV/SETUP_TOKEN the process carries. These tests
- * reset the module registry and import `./setup` under controlled env to
- * exercise both sides of that bootstrap guard.
+ * The SETUP_TOKEN warning lives inside the `getSetupConfig` server-fn handler
+ * (module-scope side effects leak into the browser bundle), so it re-evaluates
+ * on every config fetch under whatever NODE_ENV/SETUP_TOKEN the process
+ * carries. These tests call `getSetupConfig()` under controlled env and
+ * prisma state to exercise every side of that exposure gate.
  */
 
 // createServerFn → chainable builder that returns the handler directly.
@@ -20,13 +21,15 @@ vi.mock('@tanstack/react-start', () => {
   return { createServerFn: () => createBuilder() };
 });
 
-const { mockWarn, authConfig, mockAuditEvent, mockSignUpEmail, networkGate } = vi.hoisted(() => ({
-  mockWarn: vi.fn(),
-  authConfig: { authProvider: 'better-auth' as string },
-  mockAuditEvent: vi.fn(),
-  mockSignUpEmail: vi.fn(),
-  networkGate: { localAllowed: true },
-}));
+const { mockWarn, authConfig, mockAuditEvent, mockSignUpEmail, networkGate, prismaState } =
+  vi.hoisted(() => ({
+    mockWarn: vi.fn(),
+    authConfig: { authProvider: 'better-auth' as string },
+    mockAuditEvent: vi.fn(),
+    mockSignUpEmail: vi.fn(),
+    networkGate: { localAllowed: true },
+    prismaState: { userCount: 0 },
+  }));
 
 vi.mock('@/server/infrastructure/logger', () => ({
   createServerLogger: () => ({ warn: (...args: unknown[]) => mockWarn(...args) }),
@@ -35,7 +38,7 @@ vi.mock('@/server/infrastructure/logger', () => ({
 vi.mock('@/server/infrastructure/prisma', () => ({
   prisma: {
     betterAuthUser: {
-      count: () => Promise.resolve(0),
+      count: () => Promise.resolve(prismaState.userCount),
       findUnique: () => Promise.resolve({ id: 'user-1' }),
     },
   },
@@ -58,12 +61,13 @@ vi.mock('@/server/infrastructure/auth/better-auth-instance', () => ({
   getAuth: () => ({ api: { signUpEmail: (...args: unknown[]) => mockSignUpEmail(...args) } }),
 }));
 
-describe('setup module bootstrap (SETUP_TOKEN warning)', () => {
+describe('getSetupConfig — SETUP_TOKEN exposure warning', () => {
   const originalNodeEnv = process.env.NODE_ENV;
   const originalSetupToken = process.env.SETUP_TOKEN;
 
   beforeEach(() => {
     mockWarn.mockClear();
+    prismaState.userCount = 0;
   });
 
   afterEach(() => {
@@ -74,32 +78,45 @@ describe('setup module bootstrap (SETUP_TOKEN warning)', () => {
     vi.resetModules();
   });
 
-  it('warns at import time in production when SETUP_TOKEN is unset', async () => {
+  async function callGetSetupConfig(): Promise<import('./setup-config').SetupConfig> {
+    const mod = await import('./setup-config');
+    return mod.getSetupConfig();
+  }
+
+  it('warns in production when zero admins exist and SETUP_TOKEN is unset', async () => {
     process.env.NODE_ENV = 'production';
     delete process.env.SETUP_TOKEN;
-    vi.resetModules();
 
-    await import('./setup');
+    const config = await callGetSetupConfig();
 
     expect(mockWarn).toHaveBeenCalledWith(expect.stringContaining('SETUP_TOKEN is not set'));
+    expect(config).toEqual({ setupRequired: true, tokenRequired: false });
   });
 
-  it('stays quiet at import time when SETUP_TOKEN is configured', async () => {
+  it('stays quiet once an admin exists, even with no SETUP_TOKEN', async () => {
     process.env.NODE_ENV = 'production';
-    process.env.SETUP_TOKEN = 'shared-secret';
-    vi.resetModules();
+    delete process.env.SETUP_TOKEN;
+    prismaState.userCount = 1;
 
-    await import('./setup');
+    await callGetSetupConfig();
 
     expect(mockWarn).not.toHaveBeenCalled();
   });
 
-  it('stays quiet outside production even without SETUP_TOKEN', async () => {
+  it('stays quiet when SETUP_TOKEN is configured', async () => {
+    process.env.NODE_ENV = 'production';
+    process.env.SETUP_TOKEN = 'shared-secret';
+
+    await callGetSetupConfig();
+
+    expect(mockWarn).not.toHaveBeenCalled();
+  });
+
+  it('stays quiet outside production even with zero admins and no SETUP_TOKEN', async () => {
     process.env.NODE_ENV = 'test';
     delete process.env.SETUP_TOKEN;
-    vi.resetModules();
 
-    await import('./setup');
+    await callGetSetupConfig();
 
     expect(mockWarn).not.toHaveBeenCalled();
   });
@@ -115,6 +132,7 @@ describe('createFirstAdmin — SETUP_TOKEN vs the local-network gate', () => {
     mockSignUpEmail.mockClear();
     mockSignUpEmail.mockResolvedValue(undefined);
     networkGate.localAllowed = true;
+    prismaState.userCount = 0;
   });
 
   afterEach(() => {

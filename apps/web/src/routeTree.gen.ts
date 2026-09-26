@@ -9,10 +9,12 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as RestaurantsRouteImport } from './routes/restaurants'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PaymentsRouteImport } from './routes/payments'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
@@ -25,6 +27,11 @@ import { Route as ExpenseIdRouteImport } from './routes/expense.$id'
 import { Route as ColleaguesColleagueIdRouteImport } from './routes/colleagues.$colleagueId'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SetupRoute = SetupRouteImport.update({
   id: '/setup',
   path: '/setup',
@@ -43,6 +50,11 @@ const RestaurantsRoute = RestaurantsRouteImport.update({
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PaymentsRoute = PaymentsRouteImport.update({
@@ -109,10 +121,12 @@ export interface FileRoutesByFullPath {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/payments': typeof PaymentsRoute
+  '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/restaurants': typeof RestaurantsRouteWithChildren
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
+  '/terms': typeof TermsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/colleagues/$colleagueId': typeof ColleaguesColleagueIdRoute
   '/expense/$id': typeof ExpenseIdRoute
@@ -126,10 +140,12 @@ export interface FileRoutesByTo {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/payments': typeof PaymentsRoute
+  '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/restaurants': typeof RestaurantsRouteWithChildren
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
+  '/terms': typeof TermsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/colleagues/$colleagueId': typeof ColleaguesColleagueIdRoute
   '/expense/$id': typeof ExpenseIdRoute
@@ -144,10 +160,12 @@ export interface FileRoutesById {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/payments': typeof PaymentsRoute
+  '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/restaurants': typeof RestaurantsRouteWithChildren
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
+  '/terms': typeof TermsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/colleagues/$colleagueId': typeof ColleaguesColleagueIdRoute
   '/expense/$id': typeof ExpenseIdRoute
@@ -163,10 +181,12 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/login'
     | '/payments'
+    | '/privacy'
     | '/reset-password'
     | '/restaurants'
     | '/settings'
     | '/setup'
+    | '/terms'
     | '/auth/callback'
     | '/colleagues/$colleagueId'
     | '/expense/$id'
@@ -180,10 +200,12 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/login'
     | '/payments'
+    | '/privacy'
     | '/reset-password'
     | '/restaurants'
     | '/settings'
     | '/setup'
+    | '/terms'
     | '/auth/callback'
     | '/colleagues/$colleagueId'
     | '/expense/$id'
@@ -197,10 +219,12 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/login'
     | '/payments'
+    | '/privacy'
     | '/reset-password'
     | '/restaurants'
     | '/settings'
     | '/setup'
+    | '/terms'
     | '/auth/callback'
     | '/colleagues/$colleagueId'
     | '/expense/$id'
@@ -215,16 +239,25 @@ export interface RootRouteChildren {
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
   PaymentsRoute: typeof PaymentsRoute
+  PrivacyRoute: typeof PrivacyRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   RestaurantsRoute: typeof RestaurantsRouteWithChildren
   SettingsRoute: typeof SettingsRoute
   SetupRoute: typeof SetupRoute
+  TermsRoute: typeof TermsRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   ExpenseIdRoute: typeof ExpenseIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/setup': {
       id: '/setup'
       path: '/setup'
@@ -251,6 +284,13 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/payments': {
@@ -365,10 +405,12 @@ const rootRouteChildren: RootRouteChildren = {
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
   PaymentsRoute: PaymentsRoute,
+  PrivacyRoute: PrivacyRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   RestaurantsRoute: RestaurantsRouteWithChildren,
   SettingsRoute: SettingsRoute,
   SetupRoute: SetupRoute,
+  TermsRoute: TermsRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   ExpenseIdRoute: ExpenseIdRoute,
 }

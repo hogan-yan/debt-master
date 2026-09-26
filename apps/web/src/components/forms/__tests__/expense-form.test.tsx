@@ -66,31 +66,30 @@ describe('ExpenseForm', () => {
     expect(screen.getByTestId(EXPENSE_FORM.AMOUNT_INPUT)).toBeInTheDocument();
   });
 
-  it('shows validation errors when required fields are empty and form is submitted', async () => {
+  it('shows the participant requirement only after a submit attempt', async () => {
     const user = userEvent.setup();
-    render(<ExpenseForm {...defaultProps} />);
+    // EQUAL mode with every FIELD valid (restaurant + amount prefilled) so
+    // TanStack keeps the submit enabled — the missing-participants case is
+    // the one under test. initialData avoids a Radix Select interaction,
+    // which jsdom cannot drive.
+    render(
+      <ExpenseForm
+        {...defaultProps}
+        initialData={{ restaurantId: 10, amount: 25, splitType: 'EQUAL' }}
+      />
+    );
 
-    // Switch to EQUAL split type to expose amount and participant validation
-    await user.click(screen.getByTestId(EXPENSE_FORM.EQUAL_RADIO));
-
-    // Clear the default date first
-    const dateInput = screen.getByTestId(EXPENSE_FORM.DATE_INPUT);
-    await user.clear(dateInput);
-
-    const submitBtn = screen.getByTestId(EXPENSE_FORM.CREATE_EXPENSE_BTN);
+    // Pristine form: no premature "at least one participant" error (M2).
+    expect(screen.queryByText('At least one participant is required')).not.toBeInTheDocument();
+    // A submit attempt with participants empty surfaces the inline error and
+    // blocks submission.
+    // initialData presence switches the form to edit mode (update button).
+    const submitBtn = screen.getByTestId('update-expense-btn');
     await user.click(submitBtn);
 
-    // Wait for validation errors to appear
     await waitFor(() => {
-      // Date field error
-      expect(screen.getByText('Date is required')).toBeInTheDocument();
-      // Participant validation (EQUAL mode shows UI text when none selected)
       expect(screen.getByText('At least one participant is required')).toBeInTheDocument();
     });
-
-    // Verify the form prevents submission since required fields are empty.
-    // Restaurant validation also prevents submission but its error is not
-    // surfaced on the Radix Select trigger until interaction.
     await waitFor(() => {
       expect(defaultProps.onSubmit).not.toHaveBeenCalled();
     });

@@ -251,7 +251,7 @@ function RestaurantsPage() {
 
         {/* Restaurants Table */}
         <DataTableWithActions
-          title={isAdmin ? m.restaurant_pageTitle() : m.restaurant_table_all()}
+          title={m.restaurant_table_all()}
           columns={createRestaurantColumns({
             onView: handleViewRestaurant,
             onEdit: handleEditClick,

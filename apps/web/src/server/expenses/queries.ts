@@ -543,9 +543,14 @@ export const getPendingClaimsForExpense = createServerFn({ method: 'GET' })
 
 /**
  * Get pending payment claims - Admin only
+ *
+ * The admin gate is enforced here, server-side: the UI's <AdminOnly> wrapper
+ * is cosmetic, and the /expenses loader calls this for every visitor. Anyone
+ * who is not an admin (including anonymous visitors) gets an empty list.
  */
 export const getPendingPaymentClaims = createServerFn({ method: 'GET' }).handler(async () => {
-  if (!(await getAuthFromCookie())) return [];
+  const user = await getAuthFromCookie();
+  if (!user?.isAdmin) return [];
   try {
     const pendingPayments = await prisma.payment.findMany({
       where: {

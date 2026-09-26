@@ -20,7 +20,7 @@ import { verifyToken } from '@/server/infrastructure/auth/auth-server-utils';
 import { detectMimeType } from '@/server/utils/file-validation';
 import { infraConfig } from '../config';
 import { readLocalFile } from './localfs-adapter';
-import { verifyStorageSignature } from './storage-signing';
+import { STORAGE_URL_TTL_SECONDS, verifyStorageSignature } from './storage-signing';
 
 const STORAGE_PATH_PREFIX = '/api/storage/';
 
@@ -41,13 +41,24 @@ function readCookieValue(cookieHeader: string, name: string): string | null {
  * Reuses the same verification primitives as `getAuthFromCookie` (JWT
  * `verifyToken` for the shared cookie; Better Auth `auth.api.getSession` for
  * BA sessions) — this is a read-only check and does NOT rotate the cookie.
+ * Access-code JWTs additionally get the same live-status re-check
+ * (`isAccessCodeActive`) as every other session path, so a deactivated or
+ * deleted code cannot keep serving objects until JWT expiry.
  */
 async function isAuthenticated(request: Request): Promise<boolean> {
   const cookieHeader = request.headers.get('cookie') ?? '';
   const token = readCookieValue(cookieHeader, 'debt-master-auth');
   if (token && token.length > 0) {
     const payload = await verifyToken(token);
-    if (payload) return true;
+    if (payload) {
+      if (typeof payload.accessCodeId === 'number') {
+        const { isAccessCodeActive } = await import(
+          '@/server/infrastructure/auth/access-code-status'
+        );
+        if (!(await isAccessCodeActive(payload.accessCodeId))) return false;
+      }
+      return true;
+    }
   }
 
   if (infraConfig.authProvider === 'better-auth') {
@@ -125,9 +136,15 @@ export async function serveStoredObject(request: Request): Promise<Response> {
     status: 200,
     headers: {
       'Content-Type': contentType,
+      // Content type is magic-byte-detected, not client-supplied — pin it so
+      // the browser never sniffs a served receipt into executable content.
+      'X-Content-Type-Options': 'nosniff',
       // Browser-only caching: files are auth-gated, so never let a shared
       // intermediary cache the bytes. Content is timestamp-keyed + immutable.
-      'Cache-Control': 'private, max-age=86400',
+      // max-age is pinned to the signed-URL TTL: the browser's cached-bytes
+      // window must not outlive the URL that fetched them, or back-navigation
+      // shows images whose URLs no longer validate.
+      'Cache-Control': `private, max-age=${STORAGE_URL_TTL_SECONDS}`,
       'Content-Length': String(buffer.length),
     },
   });

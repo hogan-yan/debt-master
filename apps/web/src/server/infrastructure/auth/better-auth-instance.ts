@@ -26,9 +26,27 @@ import { sendEmail } from '@/server/infrastructure/email';
 import { prisma } from '@/server/infrastructure/prisma';
 import { infraConfig } from '../config';
 import { buildResetPasswordEmail, buildVerificationEmail } from './better-auth-email-handlers';
+import { buildBetterAuthRateLimitStorage } from './better-auth-rate-limit-storage';
 
 function appName(): string {
   return process.env.PUBLIC_APP_NAME || 'Debt Master';
+}
+
+/**
+ * Reverse proxies better-auth should strip from X-Forwarded-For when
+ * resolving the client IP for its limiter. Without this, better-auth either
+ * buckets every request under a null IP (proxy appends to XFF) or trusts
+ * client-forged XFF entries (proxy passes them through) — brute-force
+ * evasion either way. Comma-separated IPs/CIDRs; unset = no proxy trust.
+ */
+function trustedProxies(): string[] | undefined {
+  const raw = process.env.BETTER_AUTH_TRUSTED_PROXIES;
+  if (!raw) return undefined;
+  const entries = raw
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+  return entries.length > 0 ? entries : undefined;
 }
 
 function isEnabled(name: string): boolean {
@@ -47,6 +65,11 @@ export function buildBetterAuthConfig() {
 
   const emailVerificationEnabled = isEnabled('ENABLE_EMAIL_VERIFICATION');
 
+  // Resolved once, inside `buildBetterAuthConfig()` — which only runs inside
+  // `getAuth()`, so the Valkey client is never touched at module scope.
+  const rateLimitStorage = buildBetterAuthRateLimitStorage();
+  const proxies = trustedProxies();
+
   return {
     database: prismaAdapter(prisma, { provider: 'postgresql' }),
     basePath: '/api/auth',
@@ -54,6 +77,9 @@ export function buildBetterAuthConfig() {
       enabled: true,
       window: 60,
       max: 10,
+      // Cluster-wide Valkey buckets when Valkey is configured (2-replica
+      // deploys); absent key keeps better-auth's per-pod memory limiter.
+      ...(rateLimitStorage ? { customStorage: rateLimitStorage } : {}),
     },
     emailAndPassword: {
       enabled: true,
@@ -92,6 +118,7 @@ export function buildBetterAuthConfig() {
     },
     advanced: {
       useSecureCookies: process.env.NODE_ENV === 'production',
+      ...(proxies ? { ipAddress: { trustedProxies: proxies } } : {}),
     },
     plugins,
   };

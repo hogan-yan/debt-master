@@ -14,6 +14,7 @@ import { createServerLogger } from '@/server/infrastructure/logger';
 import { infraConfig } from '../config';
 import { generateObjectKey, sanitizeForHeader } from './keys';
 import type { StorageAdapter } from './storage-adapter';
+import { STORAGE_URL_TTL_SECONDS } from './storage-signing';
 
 const logger = createServerLogger('minio', process.env.NODE_ENV === 'development');
 
@@ -95,7 +96,7 @@ export const minioAdapter: StorageAdapter = {
     }
   },
 
-  async getUrl(bucket, objectKey, expirySeconds = 24 * 60 * 60) {
+  async getUrl(bucket, objectKey, expirySeconds = STORAGE_URL_TTL_SECONDS) {
     try {
       const presignedUrl = await getClient().presignedGetObject(bucket, objectKey, expirySeconds);
       return presignedUrl;

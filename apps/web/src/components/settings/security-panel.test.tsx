@@ -4,10 +4,30 @@ import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { SECURITY } from '@/test/test-ids';
-import { SecurityPanel } from './security-panel';
+import { SecurityPanel, securityValidators } from './security-panel';
 
 const mockChangeAdminPassword = vi.fn();
 let mockIsSubmitting = false;
+
+vi.mock('@/paraglide/messages', () => ({
+  m: {
+    settings_security_title: () => 'Security',
+    settings_changePassword_title: () => 'Change password',
+    settings_changePassword_description: () => 'Update your admin password.',
+    settings_changePassword_current: () => 'Current password',
+    settings_changePassword_new: () => 'New password',
+    settings_changePassword_confirm: () => 'Confirm new password',
+    settings_changePassword_submit: () => 'Change password',
+    settings_changePassword_submitting: () => 'Updating…',
+    settings_changePassword_currentRequired: () => 'Current password is required',
+    settings_changePassword_newRequired: () => 'New password is required',
+    settings_changePassword_confirmRequired: () => 'Please confirm your new password',
+    settings_changePassword_mismatch: () => 'New passwords do not match',
+    settings_changePassword_successTitle: () => 'Password changed',
+    settings_changePassword_successDescription: () => 'Your password has been updated.',
+    settings_changePassword_successToast: () => 'Password changed successfully.',
+  },
+}));
 
 vi.mock('@/server/admin-security', () => ({
   changeAdminPassword: (...args: unknown[]) => mockChangeAdminPassword(...args),
@@ -199,5 +219,38 @@ describe('SecurityPanel', () => {
     render(<SecurityPanel />);
 
     expect(screen.getByTestId(SECURITY.CHANGE_PASSWORD_SUBMIT_BTN)).toHaveTextContent('Updating…');
+  });
+});
+
+describe('securityValidators.confirmPassword', () => {
+  const formWith = (newPassword: unknown) => ({
+    getFieldValue: (_name: string) => newPassword,
+  });
+
+  it('flags mismatch against the new password', () => {
+    expect(
+      securityValidators.confirmPassword({
+        value: 'Different!Pass',
+        fieldApi: { form: formWith('NewStr0ng!Pass') } as never,
+      })
+    ).toBe('New passwords do not match');
+  });
+
+  it('passes when confirm equals new password', () => {
+    expect(
+      securityValidators.confirmPassword({
+        value: 'NewStr0ng!Pass',
+        fieldApi: { form: formWith('NewStr0ng!Pass') } as never,
+      })
+    ).toBeUndefined();
+  });
+
+  it('keeps the required message when empty', () => {
+    expect(
+      securityValidators.confirmPassword({
+        value: '',
+        fieldApi: { form: formWith('NewStr0ng!Pass') } as never,
+      })
+    ).toBe('Please confirm your new password');
   });
 });

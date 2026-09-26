@@ -20,6 +20,8 @@ vi.mock('./localfs-adapter', () => ({ localfsAdapter }));
 const mockValidate = vi.hoisted(() => vi.fn());
 vi.mock('@/server/utils/file-validation', () => ({ validateUploadedFile: mockValidate }));
 
+import { STORAGE_URL_TTL_SECONDS } from './storage-signing';
+
 const {
   __resetStorageAdapterCacheForTests,
   deleteFromStorage,
@@ -114,7 +116,7 @@ describe('caller-facing wrappers', () => {
   it('getStorageUrl delegates to the adapter', async () => {
     const url = await getStorageUrl('bucket', 'key');
     expect(url).toBe('https://minio.example.com/presigned');
-    expect(minioAdapter.getUrl).toHaveBeenCalledWith('bucket', 'key', 86_400);
+    expect(minioAdapter.getUrl).toHaveBeenCalledWith('bucket', 'key', STORAGE_URL_TTL_SECONDS);
   });
 
   it('deleteFromStorage delegates to the adapter', async () => {

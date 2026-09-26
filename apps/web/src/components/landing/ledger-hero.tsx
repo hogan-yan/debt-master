@@ -1,11 +1,12 @@
 import { Player, type PlayerRef } from '@remotion/player';
 import { useEffect, useRef, useState } from 'react';
-import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
+import { AbsoluteFill, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 
 /**
  * "The tab balances" — the ledger panel writes itself in reading order:
- * caption, then ranks #1–#3 cascade, the total counts up and lands as THE
- * number, and the settled row closes in success green. One orchestrated
+ * caption, then ranks #1–#3 cascade, the total stands at full value from the
+ * first frame (money never count-ups), and the settled row closes in
+ * success green. One orchestrated
  * moment (DEBTM-200: one motion concept per surface), damping 200 — the
  * steady hand of a ledger being written, not a toy.
  *
@@ -27,13 +28,16 @@ export type LedgerTokenProps = {
   settledLabel: string;
 };
 
+// Fallback when no tokens are passed: CSS custom-property references so even
+// the default paint follows the page theme (the Player renders in the same
+// DOM and inherits the theme class set on <html> before first paint).
 const DEFAULT_TOKENS: LedgerTokenProps = {
-  surface: '#ffffff',
-  text: '#0a0a14',
-  muted: '#5b6472',
-  border: '#e3e7ee',
-  danger: '#d91317',
-  success: '#1a7a52',
+  surface: 'hsl(var(--background))',
+  text: 'hsl(var(--foreground))',
+  muted: 'hsl(var(--muted-foreground))',
+  border: 'hsl(var(--border))',
+  danger: 'hsl(var(--destructive-text))',
+  success: 'hsl(var(--success))',
   caption: "This week's tab",
   outstandingLabel: 'Outstanding',
   settledLabel: 'Settled up',
@@ -117,13 +121,9 @@ export const LedgerHero: React.FC<Partial<LedgerTokenProps>> = (props) => {
   // in the static end-state instead of mounting the Player at all.
   const captionProgress = rowSpring(frame, fps, 0);
   const settledProgress = rowSpring(frame, fps, 96);
-  const totalProgress = interpolate(
-    spring({ frame: frame - 36, fps, config: { damping: 200 } }),
-    [0, 1],
-    [0, 1],
-    { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
-  );
-  const total = (Number.parseFloat(TOTAL_OUTSTANDING) * totalProgress).toFixed(2);
+  // Money never count-ups (DESIGN-SYSTEM motion rule) — the total renders at
+  // full value from frame 0; only the rows cascade/settle around it.
+  const total = TOTAL_OUTSTANDING;
 
   return (
     <AbsoluteFill
@@ -296,6 +296,9 @@ export default function LedgerHeroCard(props: {
       compositionHeight={340}
       inputProps={props.tokens}
       autoPlay
+      // No audio in the composition; initiallyMuted keeps autoplay legal in
+      // every browser (unmuted autoplay is blocked and logs warnings).
+      initiallyMuted
       loop={false}
       controls={false}
       clickToPlay={false}

@@ -17,6 +17,7 @@
 import { checkRateLimit, type RateLimitConfig, type RateLimitResult } from './auth-server-utils';
 
 type RedisClient = {
+  get: (key: string) => Promise<string | null>;
   set: (
     key: string,
     value: string,
@@ -31,14 +32,14 @@ type RedisClient = {
 
 let clientPromise: Promise<RedisClient> | null = null;
 
-function shouldUseValkey(): boolean {
+export function shouldUseValkey(): boolean {
   return (
     Boolean(process.env.VALKEY_URL || process.env.VALKEY_HOST) ||
     process.env.CACHE_PROVIDER === 'valkey'
   );
 }
 
-async function getValkeyClient(): Promise<RedisClient> {
+export async function getValkeyClient(): Promise<RedisClient> {
   if (!clientPromise) {
     clientPromise = import('ioredis').then((mod) => {
       const Redis = mod.default;

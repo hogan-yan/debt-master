@@ -248,7 +248,7 @@ function ColleaguesPage() {
         {/* Active Colleagues Table */}
         {activeTab === 'active' && (
           <DataTableWithActions
-            title={isAdmin ? m.colleague_table_management() : m.colleague_table_all()}
+            title={m.colleague_table_all()}
             columns={createColleagueColumns({
               onEdit: handleEditClick,
               onDelete: handleDeleteClick,

@@ -5,6 +5,7 @@ import { serve } from 'bun';
 // @ts-expect-error - Built output has no declaration file
 import server from '../dist/server/ssr.js';
 import { handleHealth } from './health';
+import { withSecurityHeaders } from './security-headers';
 import { captureError, captureFatalAndExit, initSentry } from './sentry';
 
 // Requests larger than this are rejected before buffering (Bun enforces the
@@ -107,7 +108,7 @@ const app = serve({
     // Cheap liveness/readiness probe — answered before static/SSR so the
     // orchestrator gets a raw JSON response, never a page render.
     if (pathname === '/health' || pathname === '/healthz') {
-      return handleHealth();
+      return withSecurityHeaders(handleHealth());
     }
 
     // Serve static files from /assets, /favicon.ico, /manifest.json, etc.
@@ -119,7 +120,7 @@ const app = serve({
     ) {
       const staticResponse = serveStaticFile(pathname);
       if (staticResponse) {
-        return staticResponse;
+        return withSecurityHeaders(staticResponse);
       }
     }
 
@@ -129,19 +130,19 @@ const app = serve({
     if (pathname !== '/' && extname(pathname) !== '') {
       const staticResponse = serveStaticFile(pathname);
       if (staticResponse) {
-        return staticResponse;
+        return withSecurityHeaders(staticResponse);
       }
     }
 
     // Fall back to TanStack Start handler for everything else
-    return server.fetch(request);
+    return withSecurityHeaders(await server.fetch(request));
   },
   error(error) {
     // SSR/server-function throws land here (Bun catches fetch errors — they
     // never reach the process-level handlers above). Report, then keep Bun's
     // default 500 response shape.
     captureError(error);
-    return new Response('Internal Server Error', { status: 500 });
+    return withSecurityHeaders(new Response('Internal Server Error', { status: 500 }));
   },
 });
 

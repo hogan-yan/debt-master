@@ -302,7 +302,7 @@ describe('payment columns', () => {
     expect(
       screen.getByText('payment_applications_expenseCount_other-{"count":"2"}')
     ).toBeInTheDocument();
-    const toggle = screen.getByRole('button', { name: '' });
+    const toggle = screen.getByRole('button', { name: 'payment_col_expandApplications' });
     await user.click(toggle);
     expect(screen.getByText('A')).toBeInTheDocument();
     expect(screen.getByText('B')).toBeInTheDocument();
@@ -503,7 +503,7 @@ describe('payment columns', () => {
       />
     );
 
-    await user.click(screen.getByRole('button', { name: '' }));
+    await user.click(screen.getByRole('button', { name: 'payment_col_expandApplications' }));
 
     expect(screen.getByText('Unknown')).toBeInTheDocument();
   });

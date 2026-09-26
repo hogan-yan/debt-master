@@ -49,6 +49,12 @@ interface ExpenseFormInput {
 
 export const Route = createFileRoute('/expenses')({
   component: ExpensesPage,
+  // ?new=1 deep link: the dashboard "Log First Lunch" step opens the
+  // Add Expense form directly instead of dropping the user on the list.
+  validateSearch: (search: Record<string, unknown>): { new?: boolean } => ({
+    // Accepts true / "true" / 1 / "1" — TanStack normalizes ?new=1 to a number.
+    new: search.new === true || search.new === 'true' || search.new === 1 || search.new === '1',
+  }),
   head: () => ({
     meta: [{ title: `${m.nav_expenses()} — ${m.appTitle()}` }],
   }),
@@ -147,8 +153,9 @@ function ExpensesPage() {
   const stats = statsQuery.data ?? initialStats;
   const isLoading = expensesQuery.isFetching;
 
-  // Modal states
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  // Modal states — ?new=1 arrives from the onboarding deep link
+  const { new: openNewExpense } = Route.useSearch();
+  const [isAddModalOpen, setIsAddModalOpen] = useState(openNewExpense === true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);

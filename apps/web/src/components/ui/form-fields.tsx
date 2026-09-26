@@ -6,7 +6,11 @@ import { RadioGroup, RadioGroupItem } from './radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './select';
 import { Textarea } from './textarea';
 
-type Validator<T = unknown> = (params: { value: T }) => string | undefined;
+type Validator<T = unknown> = (params: {
+  value: T;
+  /** Provided at runtime by TanStack Form; lets one field read a sibling's value. */
+  fieldApi?: import('@tanstack/form-core').AnyFieldApi;
+}) => string | undefined;
 
 // Input field adapter
 interface FormInputProps {

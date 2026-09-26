@@ -6,6 +6,7 @@
  * All operations are protected by `requireAdminFromCookie` and logged.
  */
 
+import { createHash } from 'node:crypto';
 import { createServerFn } from '@tanstack/react-start';
 import * as z from 'zod';
 import { logAuditEvent } from '@/server/infrastructure/audit-log';
@@ -19,8 +20,33 @@ const changeAdminPasswordSchema = z.object({
 });
 
 const revokeAdminSessionSchema = z.object({
-  sessionToken: z.string().min(1, 'Session token is required'),
+  // SHA-256 hex of the session token — never the token itself. A Better Auth
+  // session token is a bearer credential and must not cross the app boundary
+  // in either direction; the hash is the client's non-secret revocation handle.
+  sessionTokenHash: z.string().regex(/^[0-9a-f]{64}$/, 'Invalid session handle'),
 });
+
+/**
+ * Per-IP throttle for password-guessable admin endpoints that call
+ * `auth.api.*` directly (bypassing better-auth's HTTP-mount limiter). Mirrors
+ * `checkTwoFactorRateLimit` in `two-factor.ts`.
+ */
+async function checkPasswordChangeRateLimit(): Promise<void> {
+  const { getClientIdentifier } = await import('@/server/infrastructure/auth/auth-rate-limit');
+  const { RATE_LIMIT } = await import('@/server/infrastructure/auth/auth-server-utils');
+  const { checkSharedRateLimit } = await import('@/server/infrastructure/auth/rate-limit-store');
+  const result = await checkSharedRateLimit(
+    `password_change:${await getClientIdentifier()}`,
+    RATE_LIMIT.TWO_FACTOR
+  );
+  if (!result.allowed) {
+    throw new Error('Too many attempts. Please try again later.');
+  }
+}
+
+function hashSessionToken(token: string): string {
+  return createHash('sha256').update(token, 'utf8').digest('hex');
+}
 
 async function requestHeadersWithCookie(): Promise<Headers> {
   const headers = new Headers();
@@ -43,6 +69,7 @@ export const changeAdminPassword = createServerFn({ method: 'POST' })
   .validator(changeAdminPasswordSchema)
   .handler(async ({ data }): Promise<ChangeAdminPasswordResult> => {
     const admin = await requireAdminFromCookie();
+    await checkPasswordChangeRateLimit();
 
     const passwordValidation = validatePassword(data.newPassword);
     if (!passwordValidation.valid) {
@@ -71,7 +98,11 @@ export const changeAdminPassword = createServerFn({ method: 'POST' })
   });
 
 export interface AdminSession {
-  readonly token: string;
+  /**
+   * SHA-256 of the session token — a revocation handle only. The raw token is
+   * a bearer credential and never leaves the server.
+   */
+  readonly tokenHash: string;
   readonly id: string;
   readonly userAgent: string | null;
   readonly ipAddress: string | null;
@@ -101,8 +132,9 @@ function parseSessionList(sessions: unknown, currentToken: string | undefined): 
     .map((session): AdminSession | null => {
       if (!session || typeof session !== 'object') return null;
       const s = session as Record<string, unknown>;
+      if (typeof s.token !== 'string' || s.token.length === 0) return null;
       return {
-        token: typeof s.token === 'string' ? s.token : '',
+        tokenHash: hashSessionToken(s.token),
         id: typeof s.id === 'string' ? s.id : '',
         userAgent: typeof s.userAgent === 'string' ? s.userAgent : null,
         ipAddress: typeof s.ipAddress === 'string' ? s.ipAddress : null,
@@ -110,10 +142,10 @@ function parseSessionList(sessions: unknown, currentToken: string | undefined): 
           s.createdAt instanceof Date ? s.createdAt.toISOString() : String(s.createdAt ?? ''),
         expiresAt:
           s.expiresAt instanceof Date ? s.expiresAt.toISOString() : String(s.expiresAt ?? ''),
-        isCurrent: typeof s.token === 'string' && s.token === currentToken,
+        isCurrent: s.token === currentToken,
       };
     })
-    .filter((s): s is AdminSession => s !== null && s.token.length > 0);
+    .filter((s): s is AdminSession => s !== null);
 }
 
 /**
@@ -139,23 +171,31 @@ export interface RevokeAdminSessionResult {
 }
 
 /**
- * Revoke a single Better Auth session by its token.
+ * Revoke a single Better Auth session by its token hash. The raw token never
+ * crosses the boundary: the server lists the admin's sessions, resolves the
+ * hash to the matching token, and revokes with it.
  */
 export const revokeAdminSession = createServerFn({ method: 'POST' })
   .validator(revokeAdminSessionSchema)
   .handler(async ({ data }): Promise<RevokeAdminSessionResult> => {
     const admin = await requireAdminFromCookie();
 
+    const headers = await requestHeadersWithCookie();
     const auth = getAuth();
-    await auth.api.revokeSession({
-      headers: await requestHeadersWithCookie(),
-      body: { token: data.sessionToken },
-    });
+    const sessions = await auth.api.listSessions({ headers });
+    const target = sessions.find(
+      (s) => typeof s.token === 'string' && hashSessionToken(s.token) === data.sessionTokenHash
+    );
+    if (!target || target.token.length === 0) {
+      throw new Error('Session not found');
+    }
+
+    await auth.api.revokeSession({ headers, body: { token: target.token } });
 
     await logAuditEvent({
       action: 'admin.session_revoked',
       userId: admin.username ?? 'unknown',
-      details: { sessionToken: data.sessionToken },
+      details: { sessionTokenHash: data.sessionTokenHash },
     });
 
     return { success: true };

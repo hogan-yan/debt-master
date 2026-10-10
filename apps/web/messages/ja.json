@@ -502,6 +502,7 @@
   "dashboard_summary_diversityRating": "多様性評価",
   "dashboard_summary_totalOutstanding": "合計未収額",
   "dashboard_summary_peopleOweMoney": "{count} 人が未払い",
+  "dashboard_summary_personOwesMoney": "{count} 人が未払い",
   "dashboard_summary_totalLunches": "合計ランチ数",
   "dashboard_summary_teamExpenses": "チーム経費",
   "dashboard_summary_topRestaurant": "トップレストラン",

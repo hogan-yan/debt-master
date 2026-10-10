@@ -44,6 +44,12 @@ describe('SummaryCards', () => {
       expect(screen.getByText('dashboard_summary_peopleOweMoney-{"count":5}')).toBeInTheDocument();
     });
 
+    it('uses singular message for exactly one debtor', () => {
+      render(<SummaryCards debtOverview={defaultDebtOverview} validDebtorsCount={1} />);
+
+      expect(screen.getByText('dashboard_summary_personOwesMoney-{"count":1}')).toBeInTheDocument();
+    });
+
     it('shows total lunches count', () => {
       render(<SummaryCards debtOverview={defaultDebtOverview} validDebtorsCount={3} />);
 

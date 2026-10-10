@@ -502,6 +502,7 @@
   "dashboard_summary_diversityRating": "Diversity rating",
   "dashboard_summary_totalOutstanding": "Total Outstanding",
   "dashboard_summary_peopleOweMoney": "{count} people owe money",
+  "dashboard_summary_personOwesMoney": "{count} person owes money",
   "dashboard_summary_totalLunches": "Total Lunches",
   "dashboard_summary_teamExpenses": "Team expenses",
   "dashboard_summary_topRestaurant": "Top Restaurant",

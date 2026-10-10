@@ -108,7 +108,7 @@ const app = serve({
     // Cheap liveness/readiness probe — answered before static/SSR so the
     // orchestrator gets a raw JSON response, never a page render.
     if (pathname === '/health' || pathname === '/healthz') {
-      return withSecurityHeaders(handleHealth());
+      return withSecurityHeaders(await handleHealth());
     }
 
     // Serve static files from /assets, /favicon.ico, /manifest.json, etc.

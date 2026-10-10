@@ -502,6 +502,7 @@
   "dashboard_summary_diversityRating": "多樣性評級",
   "dashboard_summary_totalOutstanding": "總待收款",
   "dashboard_summary_peopleOweMoney": "{count} 人欠款",
+  "dashboard_summary_personOwesMoney": "{count} 人欠款",
   "dashboard_summary_totalLunches": "總午餐次數",
   "dashboard_summary_teamExpenses": "團隊費用",
   "dashboard_summary_topRestaurant": "首選餐廳",

@@ -128,7 +128,9 @@ export function SummaryCards({
             {formatCurrency(debtOverview.totalDebtOutstanding)}
           </div>
           <p className="text-xs text-muted-foreground">
-            {m.dashboard_summary_peopleOweMoney({ count: validDebtorsCount })}
+            {validDebtorsCount === 1
+              ? m.dashboard_summary_personOwesMoney({ count: validDebtorsCount })
+              : m.dashboard_summary_peopleOweMoney({ count: validDebtorsCount })}
           </p>
         </CardContent>
       </Card>

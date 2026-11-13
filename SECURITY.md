@@ -4,7 +4,7 @@
 
 Please report security vulnerabilities privately — do not open a public issue.
 
-Report by email to the maintainer. TODO(owner email): confirm before Task 8 — fill in the reporting address before this file goes live.
+Report by email to the maintainer: [hogan.ywh@gmail.com](mailto:hogan.ywh@gmail.com).
 
 Include what you can of: the affected component or endpoint, steps to reproduce or a proof of concept, impact, and any suggested fix. You will get an acknowledgement, and we will work with you on a coordinated disclosure timeline.
 

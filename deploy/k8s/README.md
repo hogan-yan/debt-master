@@ -1,53 +1,41 @@
-# Kubernetes manifests (source of truth)
+# Kubernetes manifests
 
-These manifests mirror the live deployments in `debt-master-prod` and
-`debt-master-dev` (same shape, different namespace). They exist so the
-desired state is version-controlled and diffable — the live objects were
-previously hand-patched with nothing in the repo to compare against.
+Reference manifests for self-hosting Debt Master on Kubernetes. They describe
+the desired state — apply them, adapt namespaces/hosts to your cluster, and
+diff against your live objects when you tune them.
 
 ## What's here
 
-- `deployment.yaml` — the `debt-master` Deployment: app container + `debt-master-migrate`
-  init container (`prisma migrate deploy`), liveness/readiness probes on
-  **`/health`**, pod anti-affinity, `envFrom` references into external
-  ConfigMaps/Secrets.
-- `service.yaml` — the cluster Service (port 80 → 3000).
+- `deployment.yaml` — the `debt-master` Deployment: app container +
+  `debt-master-migrate` init container (`prisma migrate deploy`),
+  liveness/readiness probes on **`/health`**, pod anti-affinity, `envFrom`
+  references into ConfigMaps/Secrets you create in your namespace.
+- `service.yaml` — a `List` of Services: the app Service (`debt-master-service`,
+  port 80 → 3000) plus reference Services for the backing components (Valkey,
+  Postgres via CloudNativePG) the deployment expects to find by name.
 
 ## Conventions
 
-- Images are placeholders (`ghcr.io/OWNER/IMAGE:PLACEHOLDER`). CI pins the
-  exact GHCR digest at deploy time (`kubectl set image …@sha256:…`).
-- Secrets are never in this repo. Config lives in the `debt-master-config`
-  ConfigMap and the `*-decoded` Secrets in each namespace, owned by the
-  external `k3s-terraform` infra repo. Required keys are documented in
-  `docs/DEPLOYMENT.md`.
-- The namespace field reflects prod. For dev, apply with
-  `-n debt-master-dev` (namespace in the file is overridden) or sed it.
+- Images are placeholders (`ghcr.io/OWNER/IMAGE:PLACEHOLDER`). Replace them
+  with the image your CI publishes (e.g. the GHCR image from this repo's
+  workflow), or pin an exact digest at deploy time with
+  `kubectl set image …@sha256:…`.
+- Secrets are never in this repo. The Deployment pulls its configuration from
+  `envFrom`: a `debt-master-config` ConfigMap plus `<name>-decoded`/plain
+  Secrets (`database`, `authentik`, `minio`, `valkey-auth`, `jwt`,
+  `turn-credentials`). The keys they must carry match the variables documented
+  in `.env.example` (see the root README's environment table).
+- The namespace in the files (`debt-master-prod`) is an example. For another
+  namespace, apply with `-n <namespace>` or edit the field before applying.
+- The `ghcr-registry-credentials` image-pull Secret is only needed if you pull
+  from a private registry — `docker login ghcr.io` with a PAT that can read
+  packages, then create a `kubernetes.io/dockerconfigjson` Secret from it.
 
-## Sync procedure (keep this file honest)
+## Notes for running it
 
-After ANY manual `kubectl patch`/`edit` against the live deployment, export it
-back here:
-
-```sh
-kubectl get deploy debt-master -n debt-master-prod -o json \
-  | jq 'del(.status, .metadata.managedFields, .metadata.resourceVersion,
-            .metadata.uid, .metadata.creationTimestamp, .metadata.generation,
-            .metadata.annotations)' \
-  | python3 -c "import json,sys,yaml; d=json.load(sys.stdin); [c.update({'image':'ghcr.io/OWNER/IMAGE:PLACEHOLDER'}) for c in d['spec']['template']['spec'].get('containers',[])+d['spec']['template']['spec'].get('initContainers',[])]; print(yaml.safe_dump(d, sort_keys=False))" \
-  > deploy/k8s/deployment.yaml
-```
-
-Known live-vs-repo deltas to apply during the next deploy window:
-
-- Probes: live objects still probe `/` (full SSR render). This repo manifest
-  probes `/health` (cheap DB round-trip). Apply the probe change with
-  `kubectl set env`-style patch or re-apply this manifest — see
-  `docs/obsidian-vault/01-Runbooks/debt-master/rollback-deployment.md`.
-- ACTION REQUIRED (2026-09-10): the prod DB's only active access code is
-  unbound, and prod now denies storage reads for unbound codes unless
-  `ALLOW_UNBOUND_CODE_READ=true`. Bind the code or set the flag before the
-  next prod deploy — see `docs/DEPLOYMENT.md` → Pre-deploy security checklist.
-- `SKIP_SEED=true` and `RUN_MIGRATIONS_ON_START=false` must stay set in the
-  `debt-master-config` ConfigMap of BOTH namespaces — they are load-bearing
-  (seed plants shared access codes; the migrate init container owns schema).
+- Schema migrations run in the init container; `SKIP_SEED=true` and
+  `RUN_MIGRATIONS_ON_START=false` in the `debt-master-config` ConfigMap keep
+  seeding and in-process migrations off (the init container owns schema).
+- If you manage the manifests by hand afterwards, re-export any manual
+  `kubectl patch`/`edit` back into these files so the repo stays the source
+  of truth.

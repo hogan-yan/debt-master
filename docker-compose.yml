@@ -15,7 +15,9 @@ services:
       retries: 12
 
   app:
-    image: ghcr.io/hogan-yan/debt-master:latest
+    # CI publishes to ghcr.io/${{ github.repository }} = this image. Private
+    # GHCR images require `docker login ghcr.io` with a PAT that can read packages.
+    image: ghcr.io/hogan-yan/debt-master-web:latest
     # CI publishes amd64 only — declare it so arm64 hosts (Apple Silicon)
     # pull-and-emulate instead of failing with "no matching manifest".
     platform: linux/amd64

@@ -4,9 +4,9 @@
  * Init is gated on `SENTRY_DSN` — without a DSN the SDK stays completely
  * inert, mirroring the mobile app's `src/lib/observability/sentry.ts`
  * philosophy (dev/preview crash silently to the console). The DSN itself is
- * provisioned by the infrastructure repo: k3s-terraform manages a GlitchTip
- * (Sentry-compatible) project per app and injects the public DSN as the
- * `SENTRY_DSN` env var on the deployment.
+ * provisioned by your infrastructure repo (a GlitchTip / Sentry-compatible
+ * project per app works well) and injected as the public `SENTRY_DSN` env
+ * var on the deployment.
  *
  * `initSentry()` must be the first statement `scripts/server.ts` runs — the
  * SDK is then live before any request or process-level error can happen.

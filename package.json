@@ -17,7 +17,13 @@
     "test": "bun run --filter @debtmaster/web test",
     "typecheck": "bun run --filter @debtmaster/web typecheck",
     "lint": "biome check .",
-    "test:core": "bun run --filter @debtmaster/core test"
+    "test:core": "bun run --filter @debtmaster/core test",
+    "test:coverage": "bun run --filter @debtmaster/web test:coverage",
+    "test:integration": "bun run --filter @debtmaster/web test:integration",
+    "i18n:check": "bun run --filter @debtmaster/web i18n:check",
+    "knip": "bun run --filter @debtmaster/web knip",
+    "prisma:generate": "bun run --filter @debtmaster/web prisma:generate",
+    "prisma:seed": "bun run --filter @debtmaster/web prisma:seed"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.12"

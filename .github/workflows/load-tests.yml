@@ -45,7 +45,7 @@ jobs:
       - name: Summarize results
         if: always()
         working-directory: apps/web
-        run: node load-tests/analyze-results.js results.json
+        run: node load-tests/analyze-results.mjs results.json
 
       - name: Upload results
         if: always()

@@ -24,7 +24,7 @@ The provided `docker-compose.yml` starts two services: `db` (Postgres 17) and `a
 ```sh
 git clone https://github.com/hogan-yan/debt-master-web.git
 cd debt-master-web
-cp .env.example .env
+cp apps/web/.env.example .env
 ```
 
 Set the three required values in `.env`:

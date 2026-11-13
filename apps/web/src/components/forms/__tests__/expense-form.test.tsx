@@ -611,4 +611,41 @@ describe('ExpenseForm', () => {
     await user.click(checkbox);
     expect(checkbox).not.toBeChecked();
   });
+
+  it('seeds EQUAL participants from itemized colleagues when switching with none selected', async () => {
+    const user = userEvent.setup();
+    // ITEMIZED edit mode with itemized colleagues but no EQUAL participants:
+    // switching to EQUAL seeds its checkboxes from the itemized colleagues
+    // (deduplicated), so the mode toggle doesn't read as a vanished selection.
+    const initialData = {
+      id: 5,
+      date: '2024-05-01',
+      restaurantId: 10,
+      amount: 30,
+      splitType: 'ITEMIZED' as const,
+      notes: '',
+      items: [
+        { name: 'Ramen', price: 10, colleagueId: 1 },
+        { name: 'Rice', price: 5, colleagueId: 1 },
+        { name: 'Tea', price: 15, colleagueId: 2 },
+      ],
+    };
+
+    render(<ExpenseForm {...defaultProps} initialData={initialData} />);
+
+    // ITEMIZED mode derives checked state from the itemized rows themselves.
+    expect(screen.getByTestId(participantCheckboxId(1))).toBeChecked();
+    expect(screen.getByTestId(participantCheckboxId(2))).toBeChecked();
+    expect(screen.getByTestId(participantCheckboxId(3))).not.toBeChecked();
+
+    await user.click(screen.getByTestId(EXPENSE_FORM.EQUAL_RADIO));
+
+    // EQUAL mode derives checked state from selectedParticipants, which
+    // starts empty — they stay checked only because the switch seeded them
+    // from the itemized colleagues.
+    expect(screen.getByTestId(participantCheckboxId(1))).toBeChecked();
+    expect(screen.getByTestId(participantCheckboxId(2))).toBeChecked();
+    // Colleagues without itemized rows are not seeded.
+    expect(screen.getByTestId(participantCheckboxId(3))).not.toBeChecked();
+  });
 });

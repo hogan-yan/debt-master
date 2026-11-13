@@ -1,0 +1,164 @@
+apiVersion: v1
+kind: List
+items:
+- apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      app: debt-master
+    name: debt-master-service
+    namespace: debt-master-prod
+  spec:
+    internalTrafficPolicy: Cluster
+    ipFamilies:
+    - IPv4
+    ipFamilyPolicy: SingleStack
+    ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 3000
+    selector:
+      app: debt-master
+    sessionAffinity: None
+    type: ClusterIP
+- apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      app.kubernetes.io/instance: debt-master-valkey
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/name: valkey
+      app.kubernetes.io/part-of: valkey
+      app.kubernetes.io/version: 8.1.1
+      helm.sh/chart: valkey-3.0.9
+    name: debt-master-valkey-headless
+    namespace: debt-master-prod
+  spec:
+    internalTrafficPolicy: Cluster
+    ipFamilies:
+    - IPv4
+    ipFamilyPolicy: SingleStack
+    ports:
+    - name: tcp-redis
+      port: 6379
+      protocol: TCP
+      targetPort: redis
+    selector:
+      app.kubernetes.io/instance: debt-master-valkey
+      app.kubernetes.io/name: valkey
+    sessionAffinity: None
+    type: ClusterIP
+- apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      app.kubernetes.io/component: primary
+      app.kubernetes.io/instance: debt-master-valkey
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/name: valkey
+      app.kubernetes.io/part-of: valkey
+      app.kubernetes.io/version: 8.1.1
+      helm.sh/chart: valkey-3.0.9
+    name: debt-master-valkey-primary
+    namespace: debt-master-prod
+  spec:
+    internalTrafficPolicy: Cluster
+    ipFamilies:
+    - IPv4
+    ipFamilyPolicy: SingleStack
+    ports:
+    - name: tcp-redis
+      port: 6379
+      protocol: TCP
+      targetPort: redis
+    selector:
+      app.kubernetes.io/component: primary
+      app.kubernetes.io/instance: debt-master-valkey
+      app.kubernetes.io/name: valkey
+    sessionAffinity: None
+    type: ClusterIP
+- apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      cnpg.io/cluster: debtmaster-postgresql17-cluster
+    name: debtmaster-postgresql17-cluster-r
+    namespace: debt-master-prod
+    ownerReferences:
+    - apiVersion: postgresql.cnpg.io/v1
+      controller: true
+      kind: Cluster
+      name: debtmaster-postgresql17-cluster
+      uid: 4c0772b6-9f71-428f-8e20-06f371da0df6
+  spec:
+    internalTrafficPolicy: Cluster
+    ipFamilies:
+    - IPv4
+    ipFamilyPolicy: SingleStack
+    ports:
+    - name: postgres
+      port: 5432
+      protocol: TCP
+      targetPort: 5432
+    selector:
+      cnpg.io/cluster: debtmaster-postgresql17-cluster
+      cnpg.io/podRole: instance
+    sessionAffinity: None
+    type: ClusterIP
+- apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      cnpg.io/cluster: debtmaster-postgresql17-cluster
+    name: debtmaster-postgresql17-cluster-ro
+    namespace: debt-master-prod
+    ownerReferences:
+    - apiVersion: postgresql.cnpg.io/v1
+      controller: true
+      kind: Cluster
+      name: debtmaster-postgresql17-cluster
+      uid: 4c0772b6-9f71-428f-8e20-06f371da0df6
+  spec:
+    internalTrafficPolicy: Cluster
+    ipFamilies:
+    - IPv4
+    ipFamilyPolicy: SingleStack
+    ports:
+    - name: postgres
+      port: 5432
+      protocol: TCP
+      targetPort: 5432
+    selector:
+      cnpg.io/cluster: debtmaster-postgresql17-cluster
+      cnpg.io/instanceRole: replica
+    sessionAffinity: None
+    type: ClusterIP
+- apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      cnpg.io/cluster: debtmaster-postgresql17-cluster
+    name: debtmaster-postgresql17-cluster-rw
+    namespace: debt-master-prod
+    ownerReferences:
+    - apiVersion: postgresql.cnpg.io/v1
+      controller: true
+      kind: Cluster
+      name: debtmaster-postgresql17-cluster
+      uid: 4c0772b6-9f71-428f-8e20-06f371da0df6
+  spec:
+    internalTrafficPolicy: Cluster
+    ipFamilies:
+    - IPv4
+    ipFamilyPolicy: SingleStack
+    ports:
+    - name: postgres
+      port: 5432
+      protocol: TCP
+      targetPort: 5432
+    selector:
+      cnpg.io/cluster: debtmaster-postgresql17-cluster
+      cnpg.io/instanceRole: primary
+    sessionAffinity: None
+    type: ClusterIP

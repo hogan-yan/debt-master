@@ -1,0 +1,95 @@
+services:
+  postgres:
+    image: postgres:17.7-bookworm
+    container_name: postgres-debt-master
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-debtmaster}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-debtmaster}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-debtmaster} -d ${POSTGRES_DB:-debtmaster}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  valkey:
+    image: valkey/valkey:8.0-alpine
+    container_name: valkey-debt-master
+    ports:
+      - "6379:6379"
+    environment:
+      - VALKEY_PASSWORD=${VALKEY_PASSWORD:?VALKEY_PASSWORD is required}
+    command: valkey-server --requirepass ${VALKEY_PASSWORD:?VALKEY_PASSWORD is required}
+    volumes:
+      - valkey_data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "--raw", "-a", "${VALKEY_PASSWORD:?VALKEY_PASSWORD is required}", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:latest
+    container_name: minio-debt-master
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  app:
+    build: .
+    container_name: debt-master-app
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-debtmaster}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-debtmaster}
+      - VALKEY_HOST=valkey
+      - VALKEY_PORT=6379
+      - VALKEY_PASSWORD=${VALKEY_PASSWORD:?VALKEY_PASSWORD is required}
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - MINIO_USE_SSL=false
+      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}
+      - MINIO_BUCKET=debt-master
+      - TURNSTILE_SITE_KEY=${TURNSTILE_SITE_KEY:-}
+      - TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_KEY:-}
+      - AUTHENTIK_BASE_URL=${AUTHENTIK_BASE_URL:-http://auth.mew}
+      - AUTHENTIK_CLIENT_ID=${AUTHENTIK_CLIENT_ID:-}
+      - AUTHENTIK_CLIENT_SECRET=${AUTHENTIK_CLIENT_SECRET:-}
+      - AUTHENTIK_REDIRECT_URI=${AUTHENTIK_REDIRECT_URI:-http://localhost:3000/auth/callback}
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
+      - NODE_ENV=production
+      - PORT=3000
+      # Set to 'false' only if you run migrations separately (e.g., in a job)
+      - RUN_MIGRATIONS_ON_START=true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  valkey_data:
+  minio_data:

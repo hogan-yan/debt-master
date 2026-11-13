@@ -1,0 +1,51 @@
+# Dependencies
+node_modules/
+
+# Build output
+.output/
+.vinxi/
+.nitro/
+.tanstack/
+dist/
+coverage*/
+
+# Paraglide generated files
+apps/web/src/paraglide/
+
+# Generated SEO files
+apps/web/public/robots.txt
+apps/web/public/sitemap.xml
+
+# Environment — never commit real env files; .env.example is the template
+.env
+**/.env
+
+# LocalFS uploads (default LOCALFS_ROOT_DIR resolves to apps/web/storage;
+# never commit user receipts). Anchored so it does NOT match
+# apps/web/src/server/infrastructure/storage/.
+apps/web/storage/
+
+# Test / tool artifacts
+test-results/
+apps/web/test-results/
+.scratch/
+.worktrees/
+.playwright-cli/
+.playwright-mcp/
+
+# Internal ops artifact — never public
+SECRETS-CHECKLIST.md
+
+# OS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+
+# AI tool config (per-developer)
+.agents/
+.superpowers/
+.codegraph/
+.zcode/
+.claude/

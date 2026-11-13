@@ -1,0 +1,360 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.12/schema.json",
+  "files": {
+    "maxSize": 2097152,
+    "includes": [
+      "**",
+      "!**/node_modules",
+      "!**/dist",
+      "!**/build",
+      "!**/.output",
+      "!**/.vinxi",
+      "!**/coverage",
+      "!**/coverage-json",
+      "!**/.nitro",
+      "!**/.tanstack",
+      "!**/.agents",
+      "!**/.claude",
+      "!**/.scratch",
+      "!**/.worktrees",
+      "!**/tests",
+      "!**/test-results",
+      "!apps/mobile/designs",
+      "!**/docs/audits/*-evidence",
+      "!**/debug-*.ts",
+      "!**/*.min.js",
+      "!**/*.bundle.js",
+      "!**/paraglide",
+      "!**/.expo",
+      "!**/ios",
+      "!**/android",
+      "!**/*.generated.ts",
+      "!**/expo-env.d.ts",
+      "!**/*.css",
+      "!**/docs/obsidian-vault",
+      "!**/project.inlang/.meta.json",
+      "!**/.superpowers",
+      "!**/supabase/functions",
+      "!**/supabase/.temp",
+      "!**/reports"
+    ]
+  },
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    },
+    "includes": [
+      "**",
+      "!**/node_modules",
+      "!**/dist",
+      "!**/build",
+      "!**/.output",
+      "!**/.vinxi",
+      "!**/coverage",
+      "!**/coverage-json",
+      "!**/*.gen.ts",
+      "!**/routeTree.gen.ts",
+      "!**/.nitro",
+      "!**/.tanstack",
+      "!**/.agents",
+      "!**/.claude",
+      "!**/.worktrees",
+      "!**/tests",
+      "!**/test-results",
+      "!**/docs/audits/*-evidence",
+      "!**/paraglide",
+      "!**/.expo",
+      "!**/ios",
+      "!**/android",
+      "!**/*.generated.ts",
+      "!**/expo-env.d.ts",
+      "!**/docs/obsidian-vault",
+      "!**/project.inlang/.meta.json",
+      "!**/.superpowers",
+      "!**/supabase/functions",
+      "!**/supabase/.temp",
+      "!**/reports"
+    ]
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      "correctness": {
+        "noUnusedVariables": "warn",
+        "noUnusedImports": "warn",
+        "useExhaustiveDependencies": "warn",
+        "noConstructorReturn": "off"
+      },
+      "suspicious": {
+        "noExplicitAny": "warn",
+        "noArrayIndexKey": "warn",
+        "noImplicitAnyLet": "warn",
+        "noConsole": {
+          "level": "warn",
+          "options": {
+            "allow": ["log"]
+          }
+        }
+      },
+      "style": {
+        "useImportType": "off",
+        "noParameterAssign": "warn",
+        "useForOf": "off",
+        "noNonNullAssertion": "warn"
+      },
+      "a11y": {
+        "useSemanticElements": "off",
+        "useFocusableInteractive": "warn",
+        "noSvgWithoutTitle": "warn"
+      },
+      "complexity": {
+        "noForEach": "off"
+      },
+      "security": {
+        "noDangerouslySetInnerHtml": "error"
+      }
+    },
+    "includes": [
+      "**",
+      "!**/node_modules",
+      "!**/dist",
+      "!**/build",
+      "!**/.output",
+      "!**/.vinxi",
+      "!**/coverage",
+      "!**/coverage-json",
+      "!**/*.gen.ts",
+      "!**/routeTree.gen.ts",
+      "!**/.nitro",
+      "!**/.tanstack",
+      "!**/.agents",
+      "!**/.claude",
+      "!**/.worktrees",
+      "!**/tests",
+      "!**/test-results",
+      "!**/docs/audits/*-evidence",
+      "!**/debug-*.ts",
+      "!**/*.min.js",
+      "!**/*.bundle.js",
+      "!**/*.css",
+      "!**/paraglide",
+      "!**/.expo",
+      "!**/ios",
+      "!**/android",
+      "!**/*.generated.ts",
+      "!**/expo-env.d.ts",
+      "!**/docs/obsidian-vault",
+      "!**/project.inlang/.meta.json",
+      "!**/.superpowers",
+      "!**/supabase/functions",
+      "!**/supabase/.temp",
+      "!**/reports"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "formatWithErrors": false,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100,
+    "includes": [
+      "**",
+      "!**/node_modules",
+      "!**/dist",
+      "!**/build",
+      "!**/.output",
+      "!**/.vinxi",
+      "!**/coverage",
+      "!**/coverage-json",
+      "!**/*.gen.ts",
+      "!**/routeTree.gen.ts",
+      "!**/.nitro",
+      "!**/.tanstack",
+      "!**/.agents",
+      "!**/.claude",
+      "!**/.worktrees",
+      "!**/tests",
+      "!**/test-results",
+      "!**/docs/audits/*-evidence",
+      "!**/debug-*.ts",
+      "!**/*.min.js",
+      "!**/*.bundle.js",
+      "!**/*.css",
+      "!**/docs/obsidian-vault",
+      "!**/project.inlang/.meta.json",
+      "!**/.superpowers",
+      "!**/supabase/functions",
+      "!**/supabase/.temp",
+      "!**/reports"
+    ]
+  },
+  "overrides": [
+    {
+      "includes": [
+        "**/apps/mobile/**",
+        "!**/apps/mobile/src/components/ui/**",
+        "!**/apps/mobile/src/components/error-boundary.tsx",
+        "!**/apps/mobile/app/welcome.tsx",
+        "!**/apps/mobile/app/login.tsx",
+        "!**/apps/mobile/src/components/splash/**"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "react-native-safe-area-context": {
+                    "importNames": ["SafeAreaView"],
+                    "message": "Post-auth: compose Screen (@/components/ui/screen). Do not hand-roll SafeAreaView (DESIGN-SYSTEM \u00a75)."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/mobile/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@debtmaster/web": "Apps must not import each other. Share code via @debtmaster/core.",
+                  "@/lib/money": "Money math lives in @debtmaster/core (packages/core/src/money). Do not recreate an app-local copy.",
+                  "@/lib/splits": "Split math lives in @debtmaster/core (packages/core/src/splits). Do not recreate an app-local copy."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/web/**/*.test.ts", "apps/web/**/*.test.tsx"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noNonNullAssertion": "off"
+          },
+          "complexity": {
+            "noUselessFragments": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/web/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@debtmaster/mobile": "Apps must not import each other. Share code via @debtmaster/core.",
+                  "@/lib/money": "Money math lives in @debtmaster/core (packages/core/src/money).",
+                  "@/lib/splits": "Split math lives in @debtmaster/core (packages/core/src/splits)."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["packages/core/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@debtmaster/web": "core is framework-free shared code \u2014 it imports neither app.",
+                  "@debtmaster/mobile": "core is framework-free shared code \u2014 it imports neither app.",
+                  "@/lib/money": "core IS the money home. Re-importing an app-local copy is a cycle.",
+                  "@/lib/splits": "core IS the splits home. Re-importing an app-local copy is a cycle."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "trailingCommas": "es5",
+      "semicolons": "always"
+    },
+    "globals": [
+      "console",
+      "process",
+      "Buffer",
+      "__dirname",
+      "__filename",
+      "global",
+      "module",
+      "require",
+      "exports",
+      "window",
+      "document",
+      "navigator",
+      "localStorage",
+      "sessionStorage",
+      "fetch",
+      "File",
+      "FileReader",
+      "HTMLInputElement",
+      "HTMLElement",
+      "HTMLDivElement",
+      "HTMLParagraphElement",
+      "HTMLHeadingElement",
+      "HTMLButtonElement",
+      "HTMLLabelElement",
+      "HTMLSpanElement",
+      "HTMLTableElement",
+      "HTMLTableSectionElement",
+      "HTMLTableRowElement",
+      "HTMLTableCellElement",
+      "HTMLTableCaptionElement",
+      "HTMLTextAreaElement",
+      "HTMLSelectElement",
+      "Event",
+      "EventTarget",
+      "FormData",
+      "URL",
+      "URLSearchParams",
+      "Response",
+      "React",
+      "alert",
+      "setTimeout",
+      "clearTimeout",
+      "setInterval",
+      "clearInterval",
+      "performance",
+      "WebSocket",
+      "HTMLFormElement",
+      "describe",
+      "it",
+      "test",
+      "expect",
+      "vi",
+      "beforeEach",
+      "afterEach",
+      "beforeAll",
+      "afterAll",
+      "jest"
+    ]
+  }
+}

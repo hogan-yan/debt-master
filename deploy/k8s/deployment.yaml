@@ -1,0 +1,131 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: debt-master
+  name: debt-master
+  namespace: debt-master-prod
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 2
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: debt-master
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: debt-master
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: debt-master
+              topologyKey: kubernetes.io/hostname
+            weight: 100
+      automountServiceAccountToken: true
+      containers:
+      - envFrom:
+        - configMapRef:
+            name: debt-master-config
+            optional: false
+        - secretRef:
+            name: debt-master-database-decoded
+            optional: false
+        - secretRef:
+            name: debt-master-authentik
+            optional: false
+        - secretRef:
+            name: debt-master-minio
+            optional: false
+        - secretRef:
+            name: debt-master-valkey-auth
+            optional: false
+        - secretRef:
+            name: debt-master-jwt
+            optional: false
+        - secretRef:
+            name: debt-master-turn-credentials
+            optional: false
+        image: ghcr.io/OWNER/IMAGE:PLACEHOLDER
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /health
+            port: 3000
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: debt-master
+        ports:
+        - containerPort: 3000
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /health
+            port: 3000
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 5
+        resources:
+          limits:
+            cpu: 500m
+            memory: 768Mi
+          requests:
+            cpu: 100m
+            memory: 256Mi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: true
+      hostAliases:
+      - hostnames:
+        - glitchtip.hoganyan.com
+        ip: 192.168.50.241
+      imagePullSecrets:
+      - name: ghcr-registry-credentials
+      initContainers:
+      - args:
+        - migrate
+        command:
+        - /app/apps/web/scripts/entrypoint.sh
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: DATABASE_URL
+              name: debt-master-database-decoded
+              optional: false
+        - name: SKIP_SEED
+          value: 'true'
+        image: ghcr.io/OWNER/IMAGE:PLACEHOLDER
+        imagePullPolicy: IfNotPresent
+        name: debt-master-migrate
+        resources:
+          limits:
+            cpu: 256m
+            memory: 768Mi
+          requests:
+            cpu: 50m
+            memory: 256Mi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      shareProcessNamespace: false
+      terminationGracePeriodSeconds: 30

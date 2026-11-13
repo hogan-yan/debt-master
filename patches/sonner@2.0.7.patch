@@ -1,0 +1,92 @@
+diff --git a/node_modules/sonner/.bun-tag-144ff0c82cbce270 b/.bun-tag-144ff0c82cbce270
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/node_modules/sonner/.bun-tag-4ec706dc1ef7ee5d b/.bun-tag-4ec706dc1ef7ee5d
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/dist/index.js b/dist/index.js
+index bd21e898f431298b70e941833c78819a1eb53a36..f391f8a7e9dfee08ae658f70690b5f29e10d57f5 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -521,12 +521,12 @@ const Toast = (props)=>{
+             // Add toast height to heights array after the toast is mounted
+             setInitialHeight(height);
+             setHeights((h)=>[
++                    ...h,
+                     {
+                         toastId: toast.id,
+                         height,
+                         position: toast.position
+-                    },
+-                    ...h
++                    }
+                 ]);
+             return ()=>setHeights((h)=>h.filter((height)=>height.toastId !== toast.id));
+         }
+@@ -547,12 +547,12 @@ const Toast = (props)=>{
+             const alreadyExists = heights.find((height)=>height.toastId === toast.id);
+             if (!alreadyExists) {
+                 return [
++                    ...heights,
+                     {
+                         toastId: toast.id,
+                         height: newHeight,
+                         position: toast.position
+-                    },
+-                    ...heights
++                    }
+                 ];
+             } else {
+                 return heights.map((height)=>height.toastId === toast.id ? {
+@@ -1107,7 +1107,7 @@ const Toaster = /*#__PURE__*/ React__default.default.forwardRef(function Toaster
+             "data-y-position": y,
+             "data-x-position": x,
+             style: {
+-                '--front-toast-height': `${((_heights_ = heights[0]) == null ? void 0 : _heights_.height) || 0}px`,
++                '--front-toast-height': `${((_heights_ = heights[heights.length - 1]) == null ? void 0 : _heights_.height) || 0}px`,
+                 '--width': `${TOAST_WIDTH}px`,
+                 '--gap': `${gap}px`,
+                 ...style,
+diff --git a/dist/index.mjs b/dist/index.mjs
+index d0c7a5a1fa1ed8b19c27bea968bb404f2437a07e..6376ab32f4263c2987b668050426437955e761eb 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -514,12 +514,12 @@ const Toast = (props)=>{
+             // Add toast height to heights array after the toast is mounted
+             setInitialHeight(height);
+             setHeights((h)=>[
++                    ...h,
+                     {
+                         toastId: toast.id,
+                         height,
+                         position: toast.position
+-                    },
+-                    ...h
++                    }
+                 ]);
+             return ()=>setHeights((h)=>h.filter((height)=>height.toastId !== toast.id));
+         }
+@@ -540,12 +540,12 @@ const Toast = (props)=>{
+             const alreadyExists = heights.find((height)=>height.toastId === toast.id);
+             if (!alreadyExists) {
+                 return [
++                    ...heights,
+                     {
+                         toastId: toast.id,
+                         height: newHeight,
+                         position: toast.position
+-                    },
+-                    ...heights
++                    }
+                 ];
+             } else {
+                 return heights.map((height)=>height.toastId === toast.id ? {
+@@ -1100,7 +1100,7 @@ const Toaster = /*#__PURE__*/ React.forwardRef(function Toaster(props, ref) {
+             "data-y-position": y,
+             "data-x-position": x,
+             style: {
+-                '--front-toast-height': `${((_heights_ = heights[0]) == null ? void 0 : _heights_.height) || 0}px`,
++                '--front-toast-height': `${((_heights_ = heights[heights.length - 1]) == null ? void 0 : _heights_.height) || 0}px`,
+                 '--width': `${TOAST_WIDTH}px`,
+                 '--gap': `${gap}px`,
+                 ...style,

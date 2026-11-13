@@ -1,0 +1,99 @@
+# Git
+.git
+.gitignore
+
+# Dependencies
+node_modules
+
+# Build outputs (will be copied selectively)
+.output
+.vinxi
+dist
+build
+.next
+.nuxt
+
+# Environment files — `**/` is required: a bare `.env*` only matches repo-root
+# entries, and apps/web/.env (NODE_ENV=development for the local QA stack)
+# leaking into the build context makes Vite emit dev-JSX prod bundles
+# (jsxDEV SSR crash — 204 on every page; CI never sees it, clean checkout).
+**/.env*
+!**/.env.example
+
+# IDE files
+.vscode
+.idea
+.cursor
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs
+dev.log
+
+# Documentation
+*.md
+!README.md
+
+# Task files
+*.task.md
+
+# Test files
+coverage
+*.test.*
+__tests__
+
+# Temporary files
+*.tmp
+*.temp
+
+# Cache
+.bun
+.npm
+.yarn
+.pnpm-store
+*.tsbuildinfo
+.turbo
+
+# Development tools
+.editorconfig
+.prettierrc
+.eslintrc*
+eslint.config.js
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+
+# Prisma dev files (web app owns the schema under apps/web)
+apps/web/prisma/*.db
+apps/web/prisma/*.db-journal
+
+# Additional exclusions for size optimization
+k8s/
+qodana.yaml
+component-refactoring-tasks.task.md
+dashboard-enhancement-tasks.task.md
+debt-master-dashboard-tasks.task.md
+lunch-dashboard-fun-tasks.task.md
+payment-application-system.task.md
+balance-refactoring-tasks.md
+EXPENSE_EDITING_FEATURE.md
+PRD.md
+TASKS.md
+CI-CD-README.md
+
+# Build configuration files (REQUIRED for the Docker build — DO NOT exclude).
+# Build context is the repo root; the web app lives under apps/web.
+# - apps/web/tsconfig.json: path alias @/* -> ./src/*
+# - apps/web/vite.config.ts: TanStack Start + Vite 8 native tsconfigPaths
+# - apps/web/postcss.config.ts / tailwind.config.ts: Tailwind
+# - apps/web/prisma.config.ts + apps/web/prisma/: Prisma schema + migrations
+
+# Bun lockfile backup
+package-lock.json 

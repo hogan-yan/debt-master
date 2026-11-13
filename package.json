@@ -1,0 +1,28 @@
+{
+  "name": "debt-master-web",
+  "version": "1.0.0",
+  "description": "Debt Master — self-hosted expense splitting (web app + shared core money/split package)",
+  "license": "MIT",
+  "author": "Hogan",
+  "type": "module",
+  "workspaces": [
+    "apps/web",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "bun run --filter @debtmaster/web dev",
+    "build": "bun run --filter @debtmaster/web build",
+    "start": "bun run --filter @debtmaster/web start",
+    "preview": "bun run --filter @debtmaster/web preview",
+    "test": "bun run --filter @debtmaster/web test",
+    "typecheck": "bun run --filter @debtmaster/web typecheck",
+    "lint": "biome check .",
+    "test:core": "bun run --filter @debtmaster/core test"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.12"
+  },
+  "patchedDependencies": {
+    "sonner@2.0.7": "patches/sonner@2.0.7.patch"
+  }
+}

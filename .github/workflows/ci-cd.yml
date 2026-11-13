@@ -1,0 +1,337 @@
+# CI pipeline: test (postgres service + unit/integration/e2e) and Docker
+# image build/publish to GHCR. Staged from the internal DebtMaster monorepo
+# CI/CD pipeline on 2026-11-13 (repo split, Task 3); the internal deploy
+# jobs (deploy-dev / approve-prod / deploy-prod, k3s self-hosted) and the
+# monorepo-only jobs (mobile, Supabase SQL, edge functions) were pruned —
+# this repo ships no deploy automation; self-hosters deploy via the included
+# Dockerfile / docker-compose files.
+#
+# Cost model:
+#   - paths-ignore skips the whole workflow on docs/markdown/config-only changes.
+#   - a `changes` job gates the test jobs on pull requests AND post-merge
+#     pushes, so a merge that doesn't touch code neither tests nor rebuilds.
+#   - Bun install cache + pinned Bun (1.4.0, matches Dockerfile).
+#   - direct pushes to develop run a fast tier (no integration/e2e); the full
+#     suite stays on pull_request events and pushes to main.
+# NOTE: paths-ignore means a required status check stays "pending" for ignored
+# commits — acceptable because there is no branch protection. If you add
+# required checks later, replace paths-ignore with a no-op gate job.
+# Task 8 TODO: `changes` filter paths and job working-directories still
+# reference the monorepo layout (apps/web, packages/core, @debtmaster/*);
+# adjust to the final OSS repo layout when wiring .github/workflows/.
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.editorconfig'
+      - '.gitignore'
+      - '.gitattributes'
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  changes:
+    # Dependabot PRs (bun.lock bumps, action version bumps) skip the billable
+    # hosted pipeline entirely; the merged result is tested by the develop
+    # fast tier on the post-merge push. No branch protection exists here, so
+    # skipped checks don't block merge.
+    if: github.actor != 'dependabot[bot]'
+    # Per-area path gating. dorny/paths-filter diffs changed files via the
+    # GitHub API on pull_request (merge-base default) and via the git history
+    # on push (github.event.before default). Post-merge pushes use the SAME
+    # result as PRs, so only changed areas pay for test/deploy compute.
+    permissions:
+      contents: read
+      pull-requests: read
+    runs-on: ubuntu-latest
+    outputs:
+      web: ${{ steps.decide.outputs.web }}
+      image: ${{ steps.decide.outputs.image }}
+    steps:
+      - name: Checkout code
+        # fetch-depth 0 so paths-filter can diff `before..sha` on push events.
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed areas (pull requests and pushes)
+        # Explicit base on push = github.event.before so the diff is
+        # before..sha. dorny's DEFAULT push base is the merge-base with the
+        # default branch, which is empty whenever a branch matches default —
+        # that silently skipped every gate/deploy on main/develop. On pull
+        # requests the field is empty, so dorny falls back to its PR default
+        # (merge-base + the files API) as before.
+        id: filter
+        uses: dorny/paths-filter@v4
+        with:
+          base: ${{ github.event.before }}
+          filters: |
+            web:
+              - 'apps/web/**'
+              - 'packages/core/**'
+              - 'package.json'
+              - 'bun.lock'
+              - 'tsconfig.base.json'
+              - 'biome.json'
+            image:
+              - 'apps/web/**'
+              - 'packages/core/**'
+              - 'Dockerfile'
+              - '.dockerignore'
+              - '.github/workflows/ci-cd.yml'
+              - 'package.json'
+              - 'bun.lock'
+
+      - name: Decide (fallback-all only when no previous commit exists)
+        # First push to a new branch has an all-zeros `before` that paths-filter
+        # cannot diff against — run everything in that rare case rather than
+        # silently skipping gates.
+        id: decide
+        run: |
+          if [ "${GITHUB_EVENT_NAME}" = "push" ] && \
+             [ "${{ github.event.before }}" = "0000000000000000000000000000000000000000" ]; then
+            {
+              echo "web=true"
+              echo "image=true"
+            } >> "$GITHUB_OUTPUT"
+          else
+            {
+              echo "web=${{ steps.filter.outputs.web }}"
+              echo "image=${{ steps.filter.outputs.image }}"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+  test-web:
+    needs: [changes]
+    # Web tests gate every deploy: run when web code changed OR when an image
+    # will be built (web/Dockerfile/ci changes). Without the image clause,
+    # `build` (needs test-web) would be skipped for ci/Dockerfile-only pushes
+    # and those changes could never reach build/deploy.
+    # Fast tier: direct pushes to develop skip the DB-seeded integration/e2e
+    # block (steps carry their own if:). PRs and main pushes run everything.
+    if: needs.changes.outputs.web == 'true' || needs.changes.outputs.image == 'true'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17.7-bookworm
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Bun
+        # Pinned to 1.4.0 to match the Dockerfile.
+        # Pinning also lets setup-bun's tool cache engage; `latest` re-downloads
+        # the ~36 MB binary every run.
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+
+      - name: Cache Bun install cache
+        # setup-bun caches only the Bun binary, NOT ~/.bun/install/cache, so
+        # `bun install` re-fetches every run without this. Key on bun.lock only.
+        uses: actions/cache@v6
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Generate Prisma client
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
+        run: bun run prisma:generate
+
+      - name: Run database migrations
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
+        working-directory: apps/web
+        run: bunx prisma migrate deploy
+
+      - name: Run type check
+        run: bun run typecheck
+
+      - name: Run lint
+        run: bun run lint
+
+      - name: Validate translation coverage
+        run: bun run i18n:check
+
+      - name: Run unit tests with coverage (single run)
+        # Unit/component suite runs mocked, in parallel, with no DB access.
+        # Integration tests self-skip when RUN_INTEGRATION_TESTS is unset.
+        # `bun run test` and `bun run test:coverage` are the SAME suite — the
+        # second plain run executed every unit test twice per CI run (same
+        # bug test-mobile fixed: see its test:coverage step comment).
+        # Coverage thresholds live in apps/web/vitest.config.ts.
+        # Interim thresholds just under current coverage; ratchet upward,
+        # never lower (see apps/web/vitest.config.ts).
+        run: bun run test:coverage
+
+      - name: Run integration tests
+        if: github.event_name != 'push' || github.ref != 'refs/heads/develop'
+        # Real-DB integration + handler tests against the Postgres service
+        # (migrated above). Serialized (--no-file-parallelism) because every
+        # integration file cleans the same shared tables in beforeEach; running
+        # them in parallel makes one file's cleanup wipe another's data.
+        # Fast tier: skipped on direct pushes to develop — the DB-seeded
+        # integration + e2e block costs ~2 min (measured 2026-09-12 baseline:
+        # integration 13s + Playwright install 27s + e2e 29s + seed/admin)
+        # and dev-only deploys don't need it re-proven on every push. PRs and
+        # main pushes always run it.
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
+          RUN_INTEGRATION_TESTS: '1'
+        run: bun run test:integration
+
+      - name: Type-coverage gate
+        # type-coverage >=99.5%, web workspace only (mobile holds its own
+        # 99.9% gate in test-mobile; don't couple them).
+        run: bun run --filter @debtmaster/web typecov
+
+      - name: Dead-code gate (knip)
+        # Files/dependencies/unlisted/unresolved only — the unused-export
+        # rules are "off" in knip.json until the existing backlog burns down.
+        run: bun run knip
+
+      - name: Build web app
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
+        run: bun run --filter @debtmaster/web build
+
+      - name: Seed database for e2e
+        if: github.event_name != 'push' || github.ref != 'refs/heads/develop'
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
+        run: bun run prisma:seed
+
+      - name: Create e2e admin
+        if: github.event_name != 'push' || github.ref != 'refs/heads/develop'
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
+          BETTER_AUTH_SECRET: e2e-secret-0123456789abcdefghijklmnopqrstuvwxyz
+        run: |
+          cd apps/web
+          bun run create:admin -- --email qa-admin@test.local --password 'Str0ng!QaPass!2026' --name 'QA Admin'
+
+      - name: Cache Playwright chromium
+        if: github.event_name != 'push' || github.ref != 'refs/heads/develop'
+        # Browser binaries live outside node_modules (~/.cache/ms-playwright),
+        # keyed on bun.lock so a @playwright/test bump invalidates them.
+        # GitHub-hosted ubuntu runners ship Playwright's shared-library deps,
+        # so the install below runs WITHOUT --with-deps (skips apt entirely).
+        # Fast tier: skipped on develop pushes (browsers unused there) so a stale
+        # restore can't write a wrong-revision browser set under the new key.
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: Install Playwright chromium
+        if: github.event_name != 'push' || github.ref != 'refs/heads/develop'
+        # Resolves the workspace-local @playwright/test so the installed browser
+        # revision matches what `bunx playwright test` expects (a root-level
+        # bunx fetch installs the latest npm revision and the launch fails).
+        working-directory: apps/web
+        run: bunx playwright install chromium
+
+      - name: Server boundary check (BUG-001 guard)
+        working-directory: apps/web
+        run: bun run lint:server-boundary
+
+      - name: Run Playwright e2e (auth smoke)
+        if: github.event_name != 'push' || github.ref != 'refs/heads/develop'
+        # Uses the built server via playwright.config.ts webServer. Env covers
+        # every variable the app reads at boot (see apps/web/.env.example);
+        # Turnstile/Authentik stay off, storage is localfs, cache in-memory.
+        working-directory: apps/web
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
+          BETTER_AUTH_SECRET: e2e-secret-0123456789abcdefghijklmnopqrstuvwxyz
+          BETTER_AUTH_URL: http://localhost:3000
+          JWT_SECRET: e2e-jwt-secret-0123456789abcdefghijklmnopqrstuvwxyz
+          JWT_EXPIRY_DAYS: '7'
+          AUTH_PROVIDER: better-auth
+          STORAGE_PROVIDER: localfs
+          LOCALFS_ROOT_DIR: /tmp/qa-storage
+          CACHE_PROVIDER: inmemory
+        run: bunx playwright test
+
+  build:
+    needs: [changes, test-web]
+    runs-on: ubuntu-latest
+    # Image publishing only happens on pushes to main/develop, and only when an
+    # image-relevant path changed. PRs (including Dependabot) cannot read
+    # repository secrets such as GHCR_PAT, and the mutable tag templates are not
+    # valid for pull_request events anyway.
+    if: github.event_name == 'push' && needs.changes.outputs.image == 'true'
+    outputs:
+      image_digest: ${{ steps.build-push.outputs.digest }}
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GHCR_PAT }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        id: build-push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+

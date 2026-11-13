@@ -23,10 +23,12 @@
     "i18n:check": "bun run --filter @debtmaster/web i18n:check",
     "knip": "bun run --filter @debtmaster/web knip",
     "prisma:generate": "bun run --filter @debtmaster/web prisma:generate",
-    "prisma:seed": "bun run --filter @debtmaster/web prisma:seed"
+    "prisma:seed": "bun run --filter @debtmaster/web prisma:seed",
+    "typecov": "bun run --filter '@debtmaster/*' typecov"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.12"
+    "@biomejs/biome": "^2.5.12",
+    "type-coverage": "^2.30.1"
   },
   "patchedDependencies": {
     "sonner@2.0.7": "patches/sonner@2.0.7.patch"

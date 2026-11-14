@@ -22,8 +22,8 @@ Self-hosted expense splitting for groups of colleagues — track shared lunches 
 The provided `docker-compose.yml` starts two services: `db` (Postgres 17) and `app` (the prebuilt image from GHCR).
 
 ```sh
-git clone https://github.com/hogan-yan/debt-master-web.git
-cd debt-master-web
+git clone https://github.com/hogan-yan/debt-master.git
+cd debt-master
 cp apps/web/.env.example .env
 ```
 
